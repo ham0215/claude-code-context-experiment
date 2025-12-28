@@ -11,7 +11,11 @@
       "Bash(git reset --hard:*)",
       "Read(tests/**)",
       "Glob(tests/**)",
-      "Grep(tests/**)"
+      "Grep(tests/**)",
+      "Bash(python -m pytest:*)",
+      "Bash(pip install:*)",
+      "Bash(python scripts/validate_local.py:*)",
+      "Bash(python scripts/analyze_results.py:*)"
     ],
     "ask": []
   }
