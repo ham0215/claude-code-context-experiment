@@ -28,7 +28,7 @@ claude-code-context-experiment/
 ├── .claude/
 │   └── settings.json                 # Claude Code設定（tests/を読み取り禁止）
 ├── src/
-│   └── fizzbuzz.py                   # 実装対象（毎回削除）
+│   └── fizzbuzz.py                   # 実装対象（毎回削除、.gitignoreで除外）
 ├── docs/
 │   ├── fizzbuzz_spec.md              # 設計書（Claudeが参照）
 │   ├── experiment_config.json        # 実験設定
