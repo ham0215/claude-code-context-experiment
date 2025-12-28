@@ -44,18 +44,15 @@ Claude Codeにおけるコンテキストウィンドウの消費量が、以下
 ## 3. ディレクトリ構成
 
 ```
-context-experiment/
-├── fizzbuzz-repo/                    # 実験対象リポジトリ
-│   ├── .claude/
-│   │   └── settings.json             # Claude Code設定（tests/を読み取り禁止）
-│   ├── src/
-│   │   └── fizzbuzz.py               # 実装対象（毎回削除）
-│   ├── docs/
-│   │   └── fizzbuzz_spec.md          # 設計書（Claudeが参照）
-│   ├── tests/
-│   │   └── test_fizzbuzz.py          # テストコード（Claudeは読めない）
-│   ├── .gitignore
-│   └── README.md
+claude-code-context-experiment/
+├── .claude/
+│   └── settings.json                 # Claude Code設定（tests/を読み取り禁止）
+├── src/
+│   └── fizzbuzz.py                   # 実装対象（毎回削除）
+├── docs/
+│   └── fizzbuzz_spec.md              # 設計書（Claudeが参照）
+├── tests/
+│   └── test_fizzbuzz.py              # テストコード（Claudeは読めない）
 │
 ├── scripts/                          # 実験スクリプト
 │   ├── experiment_runner.py          # メイン実行スクリプト
@@ -594,3 +591,4 @@ context_level
 | 日付 | バージョン | 変更内容 |
 |------|------------|----------|
 | 2025-12-26 | 1.0 | 初版作成 |
+| 2025-12-28 | 1.1 | ディレクトリ構成を簡素化（fizzbuzz-repo階層を削除） |
