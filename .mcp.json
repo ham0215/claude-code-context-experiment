@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "github": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["../lightweight-github-mcp/dist/index.js"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}"
+      }
+    }
+  }
+}
