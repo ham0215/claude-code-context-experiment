@@ -1,10 +1,9 @@
 """Context controller for managing Claude Code context consumption."""
 
-import subprocess
-import time
-import re
 from pathlib import Path
 from typing import Optional
+
+from claude_sdk_wrapper import ClaudeSessionManager, SessionResult
 
 
 class ContextController:
@@ -13,35 +12,50 @@ class ContextController:
     def __init__(self, project_root: Path):
         self.project_root = project_root
         self.noise_chunks_dir = project_root / "noise_chunks"
+        self.prompts_dir = project_root / "prompts"
+        self.session_manager = ClaudeSessionManager(project_root)
         self.chunk_increase_rate: Optional[float] = None
+        self._noise_template: Optional[str] = None
+
+    def _load_noise_template(self) -> str:
+        """Load noise prompt template."""
+        if self._noise_template is None:
+            template_path = self.prompts_dir / "noise_prompt_template.txt"
+            if template_path.exists():
+                self._noise_template = template_path.read_text()
+            else:
+                # Default template if file doesn't exist
+                self._noise_template = (
+                    "Please read and acknowledge the following reference material. "
+                    "Just respond with 'Acknowledged' after reading:\n\n{noise_content}"
+                )
+        return self._noise_template
 
     def get_context_percent(self) -> float:
         """
-        Get current context consumption percentage from Claude Code.
+        Get current context consumption percentage.
 
-        Note: This is a placeholder. In actual implementation,
-        this would need to interact with Claude Code CLI or API
-        to get the current context usage.
+        Calculated from cumulative token usage against 200K limit.
 
         Returns:
             Current context percentage (0-100)
         """
-        # Placeholder - actual implementation would query Claude Code
-        # This could be done by parsing the /context command output
-        # or through Claude Code's API if available
-        return 0.0
+        return self.session_manager.get_context_percent()
 
     def clear_context(self) -> bool:
         """
-        Clear Claude Code context by running /clear command.
+        Clear context by resetting token tracking.
+
+        Note: Each query() call starts a fresh session, so we just
+        reset the cumulative token counter.
 
         Returns:
-            True if successful, False otherwise
+            True if successful
         """
-        # Placeholder - actual implementation would send /clear to Claude Code
+        self.session_manager.reset_usage()
         return True
 
-    def inject_noise_chunk(self, chunk_id: int) -> bool:
+    def inject_noise_chunk(self, chunk_id: int) -> SessionResult:
         """
         Inject a noise chunk into the conversation to consume context.
 
@@ -49,19 +63,49 @@ class ContextController:
             chunk_id: ID of the noise chunk to inject
 
         Returns:
-            True if successful, False otherwise
+            SessionResult with token usage information
+
+        Raises:
+            FileNotFoundError: If chunk file doesn't exist
         """
         chunk_path = self.noise_chunks_dir / f"chunk_{chunk_id}.txt"
 
         if not chunk_path.exists():
-            print(f"Warning: Chunk {chunk_id} does not exist")
-            return False
+            raise FileNotFoundError(f"Chunk {chunk_id} does not exist at {chunk_path}")
 
-        # Placeholder - actual implementation would send the chunk
-        # content to Claude Code through the CLI or API
-        return True
+        noise_content = chunk_path.read_text()
+        template = self._load_noise_template()
+        prompt = template.replace("{noise_content}", noise_content)
 
-    def adjust_to_target(self, target_min: int, target_max: int) -> int:
+        return self.session_manager.send_message(prompt)
+
+    def send_implementation_prompt(self, prompt: str) -> SessionResult:
+        """
+        Send the implementation prompt to Claude.
+
+        Args:
+            prompt: The implementation prompt text
+
+        Returns:
+            SessionResult with response and token usage
+        """
+        return self.session_manager.send_message(prompt)
+
+    def start_trial(self) -> None:
+        """Start a new trial with fresh token tracking."""
+        self.session_manager.reset_usage()
+
+    def end_trial(self) -> dict:
+        """
+        End trial and return token usage summary.
+
+        Returns:
+            Dictionary with token usage details
+        """
+        usage = self.session_manager.get_token_usage()
+        return usage
+
+    def adjust_to_target(self, target_min: int, target_max: int) -> tuple[float, int]:
         """
         Adjust context to target range by injecting noise chunks.
 
@@ -70,7 +114,7 @@ class ContextController:
             target_max: Maximum target context percentage
 
         Returns:
-            Actual context percentage achieved
+            Tuple of (actual context percentage, number of chunks injected)
         """
         self.clear_context()
         current = self.get_context_percent()
@@ -78,17 +122,25 @@ class ContextController:
         max_chunks = 100  # Safety limit
 
         while current < target_min and chunk_id < max_chunks:
-            self.inject_noise_chunk(chunk_id)
-            current = self.get_context_percent()
-            chunk_id += 1
+            try:
+                result = self.inject_noise_chunk(chunk_id)
+                if not result.success:
+                    print(f"Warning: Chunk {chunk_id} injection failed: {result.error}")
+                current = self.get_context_percent()
+                chunk_id += 1
 
-            # Check for overshoot
-            if current > target_max:
-                print(f"Overshoot detected: {current}% > {target_max}%")
-                # Retry with fresh context
-                return self.adjust_to_target(target_min, target_max)
+                print(f"  Chunk {chunk_id-1}: context now at {current:.1f}%")
 
-        return int(current)
+                # Check for overshoot
+                if current > target_max:
+                    print(f"Overshoot: {current:.1f}% > {target_max}%")
+                    break
+
+            except FileNotFoundError:
+                print(f"No more chunks available after {chunk_id}")
+                break
+
+        return current, chunk_id
 
 
 def estimate_chunks_needed(target_percent: float, chunk_increase_rate: float) -> int:
@@ -122,3 +174,6 @@ if __name__ == "__main__":
         print(f"Found {len(chunks)} noise chunks")
     else:
         print("No noise chunks directory found")
+
+    # Test context percentage
+    print(f"Current context: {controller.get_context_percent():.2f}%")

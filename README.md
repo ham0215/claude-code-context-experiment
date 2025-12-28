@@ -48,9 +48,13 @@ claude-code-context-experiment/
 ### 事前準備
 
 1. リポジトリのセットアップ
-2. `.claude/settings.json` でテストコードへのアクセスを禁止
-3. キャリブレーション実行（ノイズ量の調整）
-4. ノイズチャンクファイルの生成
+2. 依存関係のインストール
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. `.claude/settings.json` でテストコードへのアクセスを禁止
+4. キャリブレーション実行（ノイズ量の調整）
+5. ノイズチャンクファイルの生成
 
 ### 各試行の流れ
 

@@ -1,0 +1,2 @@
+claude-code-sdk>=0.1.0
+pytest>=7.0.0
