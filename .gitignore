@@ -27,3 +27,11 @@ out/
 tmp/
 temp/
 *.tmp
+
+# Experiment results
+results/
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/

@@ -1,0 +1,75 @@
+# Technical Documentation: Database Architecture Patterns
+
+## Introduction to Database Design
+
+Database design is a critical aspect of software development that involves organizing data according to a database model. The designer determines what data must be stored and how the data elements interrelate. With this information, they can begin to fit the data to the database model.
+
+## Normalization
+
+Database normalization is the process of structuring a relational database in accordance with a series of so-called normal forms in order to reduce data redundancy and improve data integrity. It was first proposed by Edgar F. Codd as part of his relational model.
+
+### First Normal Form (1NF)
+
+A relation is in first normal form if and only if the domain of each attribute contains only atomic values, and the value of each attribute contains only a single value from that domain. The following conditions must hold:
+
+1. Each table cell should contain a single value
+2. Each record needs to be unique
+3. Each column should have a unique name
+4. The order in which data is stored does not matter
+
+### Second Normal Form (2NF)
+
+A table is in 2NF if it is in 1NF and every non-prime attribute of the table is dependent on the whole of every candidate key. A non-prime attribute of a table is an attribute that is not a part of any candidate key of the table.
+
+### Third Normal Form (3NF)
+
+A table is in 3NF if it is in 2NF and all the attributes in a table are determined only by the candidate keys of that table and not by any non-prime attributes. 3NF is designed to minimize storage costs by eliminating duplicative data.
+
+## Indexing Strategies
+
+An index is a data structure that improves the speed of data retrieval operations on a database table at the cost of additional writes and storage space to maintain the index data structure. Indexes are used to quickly locate data without having to search every row in a database table every time a database table is accessed.
+
+### B-Tree Indexes
+
+B-tree is the most commonly used data structure for indexes. The values in B-tree are stored in order, making them efficient for exact matches and range queries. Each node can have multiple children, which minimizes the number of disk I/O operations required.
+
+### Hash Indexes
+
+Hash indexes are built on a hash table and are useful only for exact lookups that use every column in the index. For each row, the storage engine computes a hash code of the indexed columns.
+
+### Full-Text Indexes
+
+Full-text indexes are special indexes designed for text searching. They allow users to run full-text queries against character-based data. Full-text search refers to the functionality that supports full-text queries.
+
+## Query Optimization
+
+Query optimization is a feature of many relational database management systems and other databases such as NoSQL and graph databases. The query optimizer attempts to determine the most efficient way to execute a given query by considering the possible query plans.
+
+### Cost-Based Optimization
+
+The optimizer assigns an estimated cost to each possible query plan and chooses the plan with the smallest cost. Costs are used to estimate the runtime cost of evaluating the query, in terms of the number of I/O operations required, CPU requirements, and other factors.
+
+### Rule-Based Optimization
+
+Rule-based optimizers apply a set of rules in order to transform the query plan. The rules encode knowledge about efficient query processing strategies. For example, one rule might state that filters should be applied as early as possible.
+
+## Transaction Management
+
+A database transaction symbolizes a unit of work performed within a database management system against a database. Transactions in a database environment have two main purposes.
+
+### ACID Properties
+
+ACID is a set of properties of database transactions intended to guarantee validity even in the event of errors, power failures, etc.
+
+1. **Atomicity**: Each transaction is all or nothing
+2. **Consistency**: Any transaction will bring the database from one valid state to another
+3. **Isolation**: Concurrent execution of transactions results in a system state that would be obtained if transactions were executed sequentially
+4. **Durability**: Once a transaction has been committed, it will remain so
+
+## Conclusion
+
+Understanding database architecture patterns is essential for building scalable and maintainable applications. The concepts covered in this document provide a foundation for making informed decisions about database design.
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+
+Curabitur pretium tincidunt lacus. Nulla gravida orci a odio. Nullam varius, turpis et commodo pharetra, est eros bibendum elit, nec luctus magna felis sollicitudin mauris. Integer in mauris eu nibh euismod gravida. Duis ac tellus et risus vulputate vehicula. Donec lobortis risus a elit. Etiam tempor. Ut ullamcorper, ligula eu tempor congue, eros est euismod turpis, id tincidunt sapien risus a quam. Maecenas fermentum consequat mi. Donec fermentum. Pellentesque malesuada nulla a mi. Duis sapien sem, aliquet sed, vulputate eget, feugiat sit amet, magna.

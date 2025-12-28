@@ -8,7 +8,10 @@
       "Bash(git push --force:*)",
       "Bash(git push -f:*)",
       "Bash(git reflog delete:*)",
-      "Bash(git reset --hard:*)"
+      "Bash(git reset --hard:*)",
+      "Read(tests/**)",
+      "Glob(tests/**)",
+      "Grep(tests/**)"
     ],
     "ask": []
   }

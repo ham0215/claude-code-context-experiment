@@ -1,0 +1,84 @@
+# Cloud Computing Infrastructure Guide
+
+## Overview of Cloud Services
+
+Cloud computing is the on-demand delivery of IT resources over the Internet with pay-as-you-go pricing. Instead of buying, owning, and maintaining physical data centers and servers, you can access technology services, such as computing power, storage, and databases, on an as-needed basis from a cloud provider.
+
+## Service Models
+
+### Infrastructure as a Service (IaaS)
+
+IaaS contains the basic building blocks for cloud IT. It typically provides access to networking features, computers (virtual or on dedicated hardware), and data storage space. IaaS gives you the highest level of flexibility and management control over your IT resources.
+
+Key characteristics of IaaS include:
+- Resources are available as a service
+- Cost varies depending on consumption
+- Services are highly scalable
+- Multiple users can access a single piece of hardware
+- Organization retains complete control of the infrastructure
+- Dynamic and flexible
+
+### Platform as a Service (PaaS)
+
+PaaS removes the need for organizations to manage the underlying infrastructure (usually hardware and operating systems), and allows you to focus on the deployment and management of your applications. This helps you be more efficient as you don't need to worry about resource procurement, capacity planning, software maintenance, patching, or any of the other undifferentiated heavy lifting involved in running your application.
+
+### Software as a Service (SaaS)
+
+SaaS provides you with a complete product that is run and managed by the service provider. In most cases, people referring to SaaS are referring to end-user applications (such as web-based email). With a SaaS offering, you don't have to think about how the service is maintained or how the underlying infrastructure is managed.
+
+## Deployment Models
+
+### Public Cloud
+
+The cloud resources are owned and operated by a third-party cloud service provider and delivered over the Internet. With a public cloud, all hardware, software, and other supporting infrastructure is owned and managed by the cloud provider.
+
+### Private Cloud
+
+A private cloud refers to cloud computing resources used exclusively by a single business or organization. A private cloud can be physically located on the company's on-site datacenter. Some companies also pay third-party service providers to host their private cloud.
+
+### Hybrid Cloud
+
+Hybrid clouds combine public and private clouds, bound together by technology that allows data and applications to be shared between them. By allowing data and applications to move between private and public clouds, a hybrid cloud gives your business greater flexibility, more deployment options, and helps optimize your existing infrastructure, security, and compliance.
+
+## Container Orchestration
+
+Container orchestration is the automated management of containerized applications across multiple hosts. It handles the deployment, scaling, networking, and availability of container-based applications.
+
+### Kubernetes Architecture
+
+Kubernetes is an open-source container orchestration platform that automates the deployment, scaling, and management of containerized applications.
+
+Core components include:
+- Control Plane: Makes global decisions about the cluster
+- etcd: Consistent and highly-available key value store
+- API Server: Front end for the Kubernetes control plane
+- Scheduler: Watches for newly created Pods with no assigned node
+- Controller Manager: Runs controller processes
+
+### Service Mesh
+
+A service mesh is a dedicated infrastructure layer for facilitating service-to-service communications between microservices. It provides features like load balancing, service discovery, encryption, authentication, and authorization.
+
+## Monitoring and Observability
+
+Observability is the ability to measure the internal states of a system by examining its outputs. A system is considered observable if the current state can be estimated by only using information from outputs.
+
+### Three Pillars of Observability
+
+1. **Metrics**: Numerical representations of data measured over intervals of time
+2. **Logs**: Immutable, timestamped records of discrete events
+3. **Traces**: Representations of a series of causally related distributed events
+
+## Security Best Practices
+
+Cloud security encompasses the technologies, policies, controls, and services that protect cloud data, applications, and infrastructure from threats.
+
+### Identity and Access Management
+
+IAM enables you to manage access to cloud services and resources securely. Using IAM, you can create and manage users and groups, and use permissions to allow and deny their access to resources.
+
+### Encryption
+
+Data encryption translates data into another form, or code, so that only people with access to a secret key or password can read it. Encrypted data is commonly referred to as ciphertext, while unencrypted data is called plaintext.
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin nibh augue, suscipit a, scelerisque sed, lacinia in, mi. Cras vel lorem. Etiam pellentesque aliquet tellus. Phasellus pharetra nulla ac diam. Quisque semper justo at risus. Donec venenatis, turpis vel hendrerit interdum, dui ligula ultricies purus, sed posuere libero dui id orci.

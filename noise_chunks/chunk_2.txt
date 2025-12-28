@@ -1,0 +1,96 @@
+# Network Protocol Fundamentals
+
+## OSI Model Overview
+
+The Open Systems Interconnection (OSI) model is a conceptual framework used to describe the functions of a networking system. The OSI model characterizes computing functions into a universal set of rules and requirements in order to support interoperability between different products and software.
+
+### Layer 1: Physical Layer
+
+The Physical Layer is responsible for the transmission and reception of unstructured raw data between a device and a physical transmission medium. It converts the digital bits into electrical, radio, or optical signals.
+
+### Layer 2: Data Link Layer
+
+The Data Link Layer provides node-to-node data transfer between two directly connected nodes. It also handles error correction from the physical layer. The Data Link Layer is divided into two sublayers: the Media Access Control (MAC) layer and the Logical Link Control (LLC) layer.
+
+### Layer 3: Network Layer
+
+The Network Layer is responsible for packet forwarding including routing through intermediate routers. It provides the functional and procedural means of transferring variable length data sequences from a source to a destination host via one or more networks.
+
+### Layer 4: Transport Layer
+
+The Transport Layer provides transparent transfer of data between end systems. It is responsible for end-to-end error recovery and flow control. It ensures complete data transfer.
+
+### Layer 5: Session Layer
+
+The Session Layer establishes, manages and terminates connections between applications. It sets up, coordinates, and terminates conversations, exchanges, and dialogues between the applications at each end.
+
+### Layer 6: Presentation Layer
+
+The Presentation Layer establishes context between application-layer entities. If there is a mapping between the different semantics used by the different application-layer entities, this layer can provide that mapping.
+
+### Layer 7: Application Layer
+
+The Application Layer is the OSI layer closest to the end user, which means both the OSI application layer and the user interact directly with the software application.
+
+## TCP/IP Protocol Suite
+
+The TCP/IP protocol suite is the set of communications protocols used for the Internet and other similar networks. It is named after two of its most important protocols: Transmission Control Protocol (TCP) and Internet Protocol (IP).
+
+### IP Addressing
+
+An IP address is a unique identifier assigned to each device connected to a computer network that uses the Internet Protocol for communication. IP addresses have two principal functions: network interface identification and location addressing.
+
+#### IPv4
+
+IPv4 uses 32-bit addresses, which limits the address space to 4,294,967,296 addresses. IPv4 reserves some addresses for special purposes such as private networks or multicast addresses.
+
+#### IPv6
+
+IPv6 uses 128-bit addresses, theoretically allowing 2^128 addresses. IPv6 addresses are represented as eight groups of four hexadecimal digits with the groups being separated by colons.
+
+### TCP Protocol
+
+TCP provides reliable, ordered, and error-checked delivery of a stream of octets between applications running on hosts communicating via an IP network. Major internet applications such as the World Wide Web, email, and file transfer rely on TCP.
+
+### UDP Protocol
+
+UDP uses a simple connectionless communication model with a minimum of protocol mechanisms. UDP provides checksums for data integrity and port numbers for addressing different functions at the source and destination of the datagram.
+
+## DNS System
+
+The Domain Name System (DNS) is a hierarchical and decentralized naming system for computers, services, or other resources connected to the Internet or a private network.
+
+### DNS Record Types
+
+- **A Record**: Maps a domain name to an IPv4 address
+- **AAAA Record**: Maps a domain name to an IPv6 address
+- **CNAME Record**: Creates an alias for a domain name
+- **MX Record**: Specifies mail servers for a domain
+- **TXT Record**: Holds text information
+- **NS Record**: Specifies authoritative name servers
+
+## HTTP Protocol
+
+The Hypertext Transfer Protocol (HTTP) is an application-layer protocol for transmitting hypermedia documents. It was designed for communication between web browsers and web servers.
+
+### HTTP Methods
+
+- GET: Requests a representation of the specified resource
+- POST: Submits data to be processed to a specified resource
+- PUT: Replaces all current representations of the target resource
+- DELETE: Deletes the specified resource
+- PATCH: Applies partial modifications to a resource
+- HEAD: Same as GET but without the response body
+- OPTIONS: Describes communication options for the target resource
+
+## Security Protocols
+
+### TLS/SSL
+
+Transport Layer Security (TLS) and its predecessor, Secure Sockets Layer (SSL), are cryptographic protocols designed to provide communications security over a computer network.
+
+### HTTPS
+
+HTTPS is an extension of HTTP. It is used for secure communication over a computer network. In HTTPS, the communication protocol is encrypted using TLS.
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi sed turpis et lacus elementum sagittis. Sed ac blandit nunc, a sagittis tellus.
