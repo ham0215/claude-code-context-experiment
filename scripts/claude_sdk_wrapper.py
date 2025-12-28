@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
-from claude_code_sdk import Claude, ClaudeCodeException, query
+from claude_code_sdk import query, ClaudeSDKError
 from claude_code_sdk.types import (
     ClaudeCodeOptions,
     Message,
@@ -91,10 +91,10 @@ class ClaudeSessionManager:
                     error="No result message received",
                 )
 
-            # Extract usage from result
+            # Extract usage from result (usage is a dict)
             if result_message.usage:
-                input_tokens = result_message.usage.input_tokens or 0
-                output_tokens = result_message.usage.output_tokens or 0
+                input_tokens = result_message.usage.get("input_tokens", 0) or 0
+                output_tokens = result_message.usage.get("output_tokens", 0) or 0
 
             self.cumulative_usage.input_tokens += input_tokens
             self.cumulative_usage.output_tokens += output_tokens
@@ -110,14 +110,14 @@ class ClaudeSessionManager:
                 duration_ms=result_message.duration_ms or 0,
             )
 
-        except ClaudeCodeException as e:
+        except ClaudeSDKError as e:
             return SessionResult(
                 success=False,
                 input_tokens=0,
                 output_tokens=0,
                 total_tokens=0,
                 content="",
-                error=f"ClaudeCodeException: {e}",
+                error=f"ClaudeSDKError: {e}",
             )
         except Exception as e:
             return SessionResult(
