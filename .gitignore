@@ -35,3 +35,6 @@ results/
 __pycache__/
 *.pyc
 .pytest_cache/
+
+# Generated experiment files
+src/fizzbuzz.py
