@@ -73,6 +73,135 @@ class ExperimentRunner:
                 break
         return "\n\n---\n\n".join(chunks)
 
+    def _load_noise_chunks_list(self, num_chunks: int) -> list[str]:
+        """Load noise chunks as a list."""
+        chunks = []
+        for i in range(num_chunks):
+            chunk_path = self.noise_chunks_dir / f"chunk_{i}.txt"
+            if chunk_path.exists():
+                chunks.append(chunk_path.read_text())
+            else:
+                break
+        return chunks
+
+    def _run_claude_incremental(
+        self,
+        num_chunks: int,
+        batch_size: int = 20,
+    ) -> dict:
+        """Run Claude CLI with incremental context building.
+
+        Sends noise in batches using --continue to build up context gradually,
+        then sends the final task.
+        """
+        chunks = self._load_noise_chunks_list(num_chunks)
+        session_id = None
+        total_input_tokens = 0
+        total_output_tokens = 0
+
+        # Send noise in batches
+        for batch_start in range(0, len(chunks), batch_size):
+            batch_end = min(batch_start + batch_size, len(chunks))
+            batch_chunks = chunks[batch_start:batch_end]
+            noise_batch = "\n\n---\n\n".join(batch_chunks)
+
+            prompt = f"""以下は参考資料 {batch_start+1}-{batch_end}/{len(chunks)} です。内容を確認してください。返答は「確認しました」のみでOKです。
+
+{noise_batch}"""
+
+            cmd = ["claude", "--print", "--output-format", "json", "-p", prompt]
+            if session_id:
+                cmd.extend(["--resume", session_id])
+
+            try:
+                result = subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    text=True,
+                    cwd=self.project_root,
+                    timeout=120,
+                )
+
+                if result.returncode == 0:
+                    try:
+                        response_json = json.loads(result.stdout)
+                        session_id = response_json.get("session_id")
+                        usage = response_json.get("usage", {})
+                        total_input_tokens += usage.get("input_tokens", 0)
+                        total_output_tokens += usage.get("output_tokens", 0)
+                        print(f"    Batch {batch_start//batch_size + 1}: sent {batch_end - batch_start} chunks")
+                    except json.JSONDecodeError:
+                        pass
+                else:
+                    return {
+                        "success": False,
+                        "error": f"Batch failed: {result.stderr or result.stdout}",
+                        "session_id": session_id,
+                    }
+
+            except subprocess.TimeoutExpired:
+                return {
+                    "success": False,
+                    "error": "Timeout during batch",
+                    "session_id": session_id,
+                }
+            except Exception as e:
+                return {
+                    "success": False,
+                    "error": str(e),
+                    "session_id": session_id,
+                }
+
+        # Send the final task
+        final_prompt = f"""以下は FizzBuzz の仕様書です:
+
+{self.fizzbuzz_spec}
+
+---
+
+{self.implementation_prompt}
+
+重要:
+- Pythonコードのみを出力してください
+- 説明は不要です
+- コードは ```python と ``` で囲んでください
+"""
+
+        cmd = ["claude", "--print", "-p", final_prompt]
+        if session_id:
+            cmd.extend(["--resume", session_id])
+
+        try:
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                cwd=self.project_root,
+                timeout=300,
+            )
+
+            return {
+                "success": result.returncode == 0,
+                "response": result.stdout,
+                "stderr": result.stderr,
+                "session_id": session_id,
+                "total_input_tokens": total_input_tokens,
+                "total_output_tokens": total_output_tokens,
+            }
+
+        except subprocess.TimeoutExpired:
+            return {
+                "success": False,
+                "error": "Timeout during final task",
+                "session_id": session_id,
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e),
+                "session_id": session_id,
+            }
+
     def _build_full_prompt(self, num_chunks: int) -> str:
         """Build the full prompt with noise and implementation request."""
         noise_content = self._load_noise_chunks(num_chunks)
@@ -181,42 +310,72 @@ class ExperimentRunner:
         # Cleanup
         self.cleanup_implementation()
 
-        # Build prompt with noise
-        print(f"  Building prompt with {num_chunks} noise chunks...")
+        # Determine approach based on context level
+        # Use incremental approach for high context levels (>= 85%) to avoid CLI prompt length limit
+        use_incremental = target_percent >= 85
+
+        # Calculate prompt size for reporting
         full_prompt = self._build_full_prompt(num_chunks)
         prompt_chars = len(full_prompt)
         estimated_tokens = prompt_chars // 4  # Rough estimate
-
         actual_context_percent = (estimated_tokens / 200_000) * 100
+
+        print(f"  Building prompt with {num_chunks} noise chunks...")
         print(f"  Prompt size: {prompt_chars:,} chars (~{estimated_tokens:,} tokens)")
         print(f"  Context: {actual_context_percent:.1f}% (target: {target_percent}%)")
+
+        if use_incremental:
+            print(f"  Using incremental approach (target >= 85%)...")
 
         # Send to Claude CLI
         print("  Sending to Claude CLI...")
         impl_start_time = time.time()
 
-        try:
-            result = subprocess.run(
-                ["claude", "--print", "-p", full_prompt],
-                capture_output=True,
-                text=True,
-                cwd=self.project_root,
-                timeout=300,  # 5 minute timeout for large prompts
-            )
+        # Initialize detailed error tracking
+        cli_returncode = None
+        cli_stdout = ""
+        cli_stderr = ""
+        session_id = None
+
+        if use_incremental:
+            # Use incremental approach for high context levels
+            incremental_result = self._run_claude_incremental(num_chunks, batch_size=20)
             implementation_time = time.time() - impl_start_time
-            cli_success = result.returncode == 0
-            response = result.stdout
-            cli_error = result.stderr if not cli_success else None
-        except subprocess.TimeoutExpired:
-            implementation_time = time.time() - impl_start_time
-            cli_success = False
-            response = ""
-            cli_error = "Timeout (5 minutes)"
-        except Exception as e:
-            implementation_time = time.time() - impl_start_time
-            cli_success = False
-            response = ""
-            cli_error = str(e)
+            cli_success = incremental_result.get("success", False)
+            response = incremental_result.get("response", "")
+            cli_error = incremental_result.get("error")
+            cli_stderr = incremental_result.get("stderr", "")
+            cli_stdout = response
+            session_id = incremental_result.get("session_id")
+        else:
+            # Use single prompt approach for lower context levels
+            try:
+                cli_result = subprocess.run(
+                    ["claude", "--print", "-p", full_prompt],
+                    capture_output=True,
+                    text=True,
+                    cwd=self.project_root,
+                    timeout=300,  # 5 minute timeout for large prompts
+                )
+                implementation_time = time.time() - impl_start_time
+                cli_returncode = cli_result.returncode
+                cli_success = cli_result.returncode == 0
+                cli_stdout = cli_result.stdout
+                cli_stderr = cli_result.stderr
+                response = cli_result.stdout
+                cli_error = cli_result.stderr if not cli_success else None
+            except subprocess.TimeoutExpired as e:
+                implementation_time = time.time() - impl_start_time
+                cli_success = False
+                response = ""
+                cli_error = "Timeout (5 minutes)"
+                cli_stdout = e.stdout if e.stdout else ""
+                cli_stderr = e.stderr if e.stderr else ""
+            except Exception as e:
+                implementation_time = time.time() - impl_start_time
+                cli_success = False
+                response = ""
+                cli_error = str(e)
 
         # Extract and save code
         impl_file = self.src_dir / "fizzbuzz.py"
@@ -239,6 +398,13 @@ class ExperimentRunner:
         func_existence = validate_functions_exist(impl_file)
         hidden_validation = validate_hidden_instructions(impl_file)
 
+        # Truncate stdout/stderr for storage (keep first/last 2000 chars each)
+        def truncate_output(text: str, max_len: int = 4000) -> str:
+            if len(text) <= max_len:
+                return text
+            half = max_len // 2
+            return text[:half] + f"\n\n... [truncated {len(text) - max_len} chars] ...\n\n" + text[-half:]
+
         result = {
             "trial_id": trial_id,
             "context_level": context_level,
@@ -250,8 +416,13 @@ class ExperimentRunner:
             "timestamp": timestamp,
             "elapsed_seconds": round(elapsed_seconds, 2),
             "implementation_seconds": round(implementation_time, 2),
+            "use_incremental": use_incremental,
+            "session_id": session_id,
             "cli_success": cli_success,
+            "cli_returncode": cli_returncode,
             "cli_error": cli_error,
+            "cli_stderr": truncate_output(cli_stderr) if cli_stderr else None,
+            "cli_stdout_preview": truncate_output(cli_stdout) if cli_stdout else None,
             "code_extracted": code_extracted,
             "test_passed": test_results["passed"],
             "tests_total": test_results["tests_total"],
