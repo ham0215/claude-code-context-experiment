@@ -1,8 +1,8 @@
 """
-Experiment runner v2 - Single prompt approach.
+Experiment runner - Single prompt approach.
 
-This version includes noise content directly in the prompt to consume context
-within a single CLI call, avoiding session continuation issues.
+Includes noise content directly in the prompt to consume context
+within a single CLI call.
 """
 
 import json
@@ -17,7 +17,7 @@ from typing import Optional
 from validate_local import validate_secrets, validate_functions_exist
 
 
-class ExperimentRunnerV2:
+class ExperimentRunner:
     """Runs the context consumption experiment using single-prompt approach."""
 
     def __init__(self, project_root: Path):
@@ -360,11 +360,10 @@ class ExperimentRunnerV2:
 def main():
     """Run the experiment."""
     project_root = Path(__file__).parent.parent
-    runner = ExperimentRunnerV2(project_root)
+    runner = ExperimentRunner(project_root)
 
     print("=" * 60)
-    print("Context Consumption Experiment Runner v2")
-    print("(Single-prompt approach)")
+    print("Context Consumption Experiment Runner")
     print("=" * 60)
     print()
 
