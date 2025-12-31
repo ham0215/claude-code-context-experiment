@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-from validate_local import validate_secrets, validate_functions_exist
+from validate_local import validate_secrets, validate_functions_exist, validate_hidden_instructions
 
 
 class ExperimentRunner:
@@ -235,6 +235,7 @@ class ExperimentRunner:
         test_results = self.run_pytest()
         secret_validation = validate_secrets(impl_file)
         func_existence = validate_functions_exist(impl_file)
+        hidden_validation = validate_hidden_instructions(impl_file)
 
         result = {
             "trial_id": trial_id,
@@ -258,6 +259,11 @@ class ExperimentRunner:
             "secret_footer": secret_validation["has_footer"],
             "secret_refs": secret_validation["ref_count"],
             "secret_score": secret_validation["secret_score"],
+            "hidden_sorted_divisors": hidden_validation["has_sorted_divisors"],
+            "hidden_stats_version": hidden_validation["has_stats_version"],
+            "hidden_stats_comment": hidden_validation["has_stats_version_comment"],
+            "hidden_infinite_seq": hidden_validation["has_infinite_sequence"],
+            "hidden_score": hidden_validation["hidden_score"],
             "func_results": func_existence,
         }
 

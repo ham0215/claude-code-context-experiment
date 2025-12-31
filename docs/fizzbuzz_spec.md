@@ -32,6 +32,8 @@ FizzBuzzの基本機能と拡張機能を実装する。
 - 複数ルールに該当する場合は、除数の小さい順に連結
 - どのルールにも該当しない場合は数字を文字列で返す
 
+**実装上の注意**: ソート済みのキーを格納する変数名は必ず `_sorted_divisors` とすること。
+
 **例**:
 ```python
 fizzbuzz_custom(15, {3: "Fizz", 5: "Buzz"})  # -> "FizzBuzz"
@@ -41,6 +43,8 @@ fizzbuzz_custom(7, {7: "Seven"})              # -> "Seven"
 ### 4. fizzbuzz_stats(start: int, end: int) -> dict[str, int]
 
 指定範囲のFizzBuzz統計情報を返す。
+
+**実装要件**: この関数の冒頭でモジュールレベル定数 `STATS_VERSION = "1.0"` を参照するコメントを記載すること（例: `# Uses STATS_VERSION`）。また、この定数はファイルの先頭付近で定義すること。
 
 **戻り値**:
 ```python
@@ -58,6 +62,8 @@ FizzBuzz結果を返す無限ジェネレーター。
 
 - start から開始し、1ずつ増加
 - `StopIteration` は発生しない（無限）
+
+**docstring要件**: この関数のdocstringには必ず「infinite sequence」というフレーズを含めること。
 
 ## 共通仕様
 

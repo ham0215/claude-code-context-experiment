@@ -77,6 +77,18 @@ class ResultsAnalyzer:
                 )
                 func_rates[func] = func_passed / n
 
+            # Hidden instruction success rates
+            hidden_rates = {
+                "sorted_divisors": sum(1 for t in trials if t.get("hidden_sorted_divisors", False)) / n,
+                "stats_version": sum(1 for t in trials if t.get("hidden_stats_version", False)) / n,
+                "stats_comment": sum(1 for t in trials if t.get("hidden_stats_comment", False)) / n,
+                "infinite_seq": sum(1 for t in trials if t.get("hidden_infinite_seq", False)) / n,
+            }
+
+            # Hidden score statistics
+            hidden_scores = [t.get("hidden_score", 0) for t in trials]
+            hidden_mean = sum(hidden_scores) / n
+
             summary[level] = {
                 "count": n,
                 "target_context_percent": round(target_mean, 1),
@@ -85,6 +97,8 @@ class ResultsAnalyzer:
                 "test_passed": test_passed,
                 "secret_score_mean": round(secret_mean, 4),
                 "secret_score_std": round(secret_std, 4),
+                "hidden_score_mean": round(hidden_mean, 4),
+                "hidden_rates": hidden_rates,
                 "response_time_mean": round(time_mean, 2),
                 "function_rates": func_rates
             }
@@ -159,16 +173,17 @@ class ResultsAnalyzer:
         ]
 
         # Table header
-        lines.append(f"{'Level':<8} {'N':>4} {'Target':>8} {'Actual':>8} {'Pass Rate':>10} {'Secret':>8} {'Time':>8}")
-        lines.append("-" * 70)
+        lines.append(f"{'Level':<8} {'N':>4} {'Target':>8} {'Actual':>8} {'Pass Rate':>10} {'Secret':>8} {'Hidden':>8} {'Time':>8}")
+        lines.append("-" * 78)
 
         for level in sorted(summary.keys()):
             s = summary[level]
+            hidden_mean = s.get('hidden_score_mean', 0)
             lines.append(
                 f"{level:<8} {s['count']:>4} "
                 f"{s['target_context_percent']:>7.1f}% {s['actual_context_percent']:>7.1f}% "
                 f"{s['test_success_rate']:>9.1%} {s['secret_score_mean']:>8.2f} "
-                f"{s['response_time_mean']:>7.1f}s"
+                f"{hidden_mean:>8.2f} {s['response_time_mean']:>7.1f}s"
             )
 
         lines.extend(["", "【関数別成功率】", ""])
@@ -178,6 +193,27 @@ class ResultsAnalyzer:
             for func, rate in summary[level]["function_rates"].items():
                 bar = "█" * int(rate * 20) + "░" * (20 - int(rate * 20))
                 lines.append(f"  {func:<20} {bar} {rate:.1%}")
+            lines.append("")
+
+        # Hidden instruction rates
+        lines.extend(["【隠し指示の遵守率】", ""])
+        lines.append("仕様書中間部分に埋め込まれた指示への対応:")
+        lines.append("")
+
+        hidden_labels = {
+            "sorted_divisors": "_sorted_divisors変数名",
+            "stats_version": "STATS_VERSION定数",
+            "stats_comment": "Uses STATS_VERSIONコメント",
+            "infinite_seq": "infinite sequenceフレーズ",
+        }
+
+        for level in sorted(summary.keys()):
+            lines.append(f"{level}:")
+            hidden_rates = summary[level].get("hidden_rates", {})
+            for key, label in hidden_labels.items():
+                rate = hidden_rates.get(key, 0)
+                bar = "█" * int(rate * 20) + "░" * (20 - int(rate * 20))
+                lines.append(f"  {label:<28} {bar} {rate:.1%}")
             lines.append("")
 
         # Chi-square tests
