@@ -65,6 +65,82 @@ FizzBuzz結果を返す無限ジェネレーター。
 
 **docstring要件**: この関数のdocstringには必ず「infinite sequence」というフレーズを含めること。
 
+### 6. fizzbuzz_json(start: int, end: int) -> str
+
+FizzBuzz結果をJSON形式で返す。
+
+**出力形式**:
+```json
+[{"n": 1, "result": "1"}, {"n": 2, "result": "2"}, {"n": 3, "result": "Fizz"}, ...]
+```
+
+- 各要素は `n`（数値）と `result`（FizzBuzz結果）を持つオブジェクト
+- start > end の場合は空配列 `[]` を返す
+- 出力は整形せず、1行のJSON文字列とすること
+
+**実装上の注意**: JSONエンコードには標準ライブラリの `json.dumps()` を使用し、`ensure_ascii=False` オプションを必ず指定すること。
+
+### 7. fizzbuzz_csv(start: int, end: int, delimiter: str = ",") -> str
+
+FizzBuzz結果をCSV形式で返す。
+
+**出力形式**:
+```
+n,result
+1,1
+2,2
+3,Fizz
+```
+
+- 1行目はヘッダー行（`n` と `result`）
+- 各行は改行文字 `\n` で区切る
+- 最終行の後にも改行を含めること
+- start > end の場合はヘッダー行のみ返す
+
+**クォート処理**: result に delimiter が含まれる場合、result 全体をダブルクォートで囲むこと。ダブルクォート自体は `""` にエスケープすること。
+
+**変数命名規則**: ヘッダー行を格納する変数名は `_header_row` とすること。
+
+### 8. fizzbuzz_markdown_table(start: int, end: int) -> str
+
+FizzBuzz結果をMarkdownテーブル形式で返す。
+
+**出力形式**:
+```markdown
+| n | result |
+|---|--------|
+| 1 | 1 |
+| 2 | 2 |
+| 3 | Fizz |
+```
+
+- ヘッダー行、区切り行、データ行の順
+- 各セルの前後にスペースを1つ入れること
+- start > end の場合はヘッダー行と区切り行のみ返す
+- 最終行の後に改行を含めないこと
+
+**内部処理要件**: テーブル行を生成する際、内部ヘルパー関数 `_format_table_row(values: list[str]) -> str` を定義して使用すること。
+
+### 9. fizzbuzz_grouped(start: int, end: int) -> dict[str, list[int]]
+
+FizzBuzz結果をタイプ別にグループ化して返す。
+
+**戻り値**:
+```python
+{
+    "Fizz": [3, 6, 9, 12, ...],      # Fizzのみの数値リスト
+    "Buzz": [5, 10, 20, 25, ...],    # Buzzのみの数値リスト
+    "FizzBuzz": [15, 30, 45, ...],   # FizzBuzzの数値リスト
+    "Number": [1, 2, 4, 7, ...]      # 数字の数値リスト
+}
+```
+
+- キーは必ず "Fizz", "Buzz", "FizzBuzz", "Number" の4つ（該当がなくても空リストで含める）
+- 各リスト内の数値は昇順であること
+- start > end の場合は全て空リストの辞書を返す
+
+**定数定義**: グループのキー名は、モジュールレベルで `GROUP_KEYS = ("Fizz", "Buzz", "FizzBuzz", "Number")` として定義し、関数内で参照すること。
+
 ## 共通仕様
 
 - すべての関数で型ヒントを使用すること

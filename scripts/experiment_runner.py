@@ -263,6 +263,10 @@ class ExperimentRunner:
             "hidden_stats_version": hidden_validation["has_stats_version"],
             "hidden_stats_comment": hidden_validation["has_stats_version_comment"],
             "hidden_infinite_seq": hidden_validation["has_infinite_sequence"],
+            "hidden_ensure_ascii": hidden_validation["has_ensure_ascii"],
+            "hidden_header_row": hidden_validation["has_header_row"],
+            "hidden_format_table_row": hidden_validation["has_format_table_row"],
+            "hidden_group_keys": hidden_validation["has_group_keys"],
             "hidden_score": hidden_validation["hidden_score"],
             "func_results": func_existence,
         }

@@ -11,6 +11,10 @@ from fizzbuzz import (
     fizzbuzz_custom,
     fizzbuzz_stats,
     fizzbuzz_generator,
+    fizzbuzz_json,
+    fizzbuzz_csv,
+    fizzbuzz_markdown_table,
+    fizzbuzz_grouped,
 )
 
 
@@ -216,3 +220,149 @@ class TestFizzbuzzGenerator:
         gen = fizzbuzz_generator()
         first = next(gen)
         assert first == "1"
+
+
+class TestFizzbuzzJson:
+    """Tests for the fizzbuzz_json function."""
+
+    def test_json_1_to_3(self):
+        import json
+        result = fizzbuzz_json(1, 3)
+        parsed = json.loads(result)
+        assert len(parsed) == 3
+        assert parsed[0] == {"n": 1, "result": "1"}
+        assert parsed[1] == {"n": 2, "result": "2"}
+        assert parsed[2] == {"n": 3, "result": "Fizz"}
+
+    def test_json_empty_range(self):
+        result = fizzbuzz_json(10, 5)
+        assert result == "[]"
+
+    def test_json_single_element(self):
+        import json
+        result = fizzbuzz_json(15, 15)
+        parsed = json.loads(result)
+        assert len(parsed) == 1
+        assert parsed[0] == {"n": 15, "result": "FizzBuzz"}
+
+    def test_json_is_single_line(self):
+        result = fizzbuzz_json(1, 10)
+        assert "\n" not in result
+
+    def test_json_fizzbuzz_values(self):
+        import json
+        result = fizzbuzz_json(13, 16)
+        parsed = json.loads(result)
+        assert parsed[0]["result"] == "13"
+        assert parsed[1]["result"] == "14"
+        assert parsed[2]["result"] == "FizzBuzz"
+        assert parsed[3]["result"] == "16"
+
+
+class TestFizzbuzzCsv:
+    """Tests for the fizzbuzz_csv function."""
+
+    def test_csv_1_to_3(self):
+        result = fizzbuzz_csv(1, 3)
+        lines = result.split("\n")
+        assert lines[0] == "n,result"
+        assert lines[1] == "1,1"
+        assert lines[2] == "2,2"
+        assert lines[3] == "3,Fizz"
+
+    def test_csv_ends_with_newline(self):
+        result = fizzbuzz_csv(1, 3)
+        assert result.endswith("\n")
+
+    def test_csv_empty_range_has_header(self):
+        result = fizzbuzz_csv(10, 5)
+        assert result == "n,result\n"
+
+    def test_csv_custom_delimiter(self):
+        result = fizzbuzz_csv(1, 3, delimiter=";")
+        lines = result.split("\n")
+        assert lines[0] == "n;result"
+        assert lines[1] == "1;1"
+
+    def test_csv_fizzbuzz_value(self):
+        result = fizzbuzz_csv(14, 16)
+        lines = result.split("\n")
+        assert "15,FizzBuzz" in lines
+
+    def test_csv_tab_delimiter(self):
+        result = fizzbuzz_csv(1, 2, delimiter="\t")
+        lines = result.split("\n")
+        assert lines[0] == "n\tresult"
+
+
+class TestFizzbuzzMarkdownTable:
+    """Tests for the fizzbuzz_markdown_table function."""
+
+    def test_markdown_1_to_3(self):
+        result = fizzbuzz_markdown_table(1, 3)
+        lines = result.split("\n")
+        assert "| n | result |" in lines[0]
+        assert "|---|" in lines[1]
+        assert "| 1 | 1 |" in lines[2]
+        assert "| 3 | Fizz |" in lines[4]
+
+    def test_markdown_no_trailing_newline(self):
+        result = fizzbuzz_markdown_table(1, 3)
+        assert not result.endswith("\n")
+
+    def test_markdown_empty_range_has_header(self):
+        result = fizzbuzz_markdown_table(10, 5)
+        lines = result.split("\n")
+        assert len(lines) == 2  # Header and separator only
+        assert "| n | result |" in lines[0]
+
+    def test_markdown_fizzbuzz_row(self):
+        result = fizzbuzz_markdown_table(14, 16)
+        assert "| 15 | FizzBuzz |" in result
+
+    def test_markdown_has_separator_row(self):
+        result = fizzbuzz_markdown_table(1, 1)
+        lines = result.split("\n")
+        assert "|---|" in lines[1] or "|--" in lines[1]
+
+
+class TestFizzbuzzGrouped:
+    """Tests for the fizzbuzz_grouped function."""
+
+    def test_grouped_1_to_15(self):
+        result = fizzbuzz_grouped(1, 15)
+        assert result["Fizz"] == [3, 6, 9, 12]
+        assert result["Buzz"] == [5, 10]
+        assert result["FizzBuzz"] == [15]
+        assert result["Number"] == [1, 2, 4, 7, 8, 11, 13, 14]
+
+    def test_grouped_all_keys_present(self):
+        result = fizzbuzz_grouped(1, 2)
+        assert "Fizz" in result
+        assert "Buzz" in result
+        assert "FizzBuzz" in result
+        assert "Number" in result
+
+    def test_grouped_empty_range(self):
+        result = fizzbuzz_grouped(10, 5)
+        assert result == {"Fizz": [], "Buzz": [], "FizzBuzz": [], "Number": []}
+
+    def test_grouped_values_sorted(self):
+        result = fizzbuzz_grouped(1, 30)
+        assert result["Fizz"] == sorted(result["Fizz"])
+        assert result["Buzz"] == sorted(result["Buzz"])
+        assert result["FizzBuzz"] == sorted(result["FizzBuzz"])
+        assert result["Number"] == sorted(result["Number"])
+
+    def test_grouped_only_fizz(self):
+        result = fizzbuzz_grouped(3, 3)
+        assert result["Fizz"] == [3]
+        assert result["Buzz"] == []
+        assert result["FizzBuzz"] == []
+        assert result["Number"] == []
+
+    def test_grouped_larger_range(self):
+        result = fizzbuzz_grouped(1, 30)
+        assert 15 in result["FizzBuzz"]
+        assert 30 in result["FizzBuzz"]
+        assert len(result["FizzBuzz"]) == 2

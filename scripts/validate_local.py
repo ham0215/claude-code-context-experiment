@@ -14,14 +14,20 @@ class SecretValidation(TypedDict):
 
 
 class HiddenInstructionValidation(TypedDict):
-    has_sorted_divisors: bool      # _sorted_divisors in fizzbuzz_custom
+    # Original 5 functions
+    has_sorted_divisors: bool       # _sorted_divisors in fizzbuzz_custom
     has_stats_version: bool         # STATS_VERSION = "1.0" constant
     has_stats_version_comment: bool # # Uses STATS_VERSION in fizzbuzz_stats
     has_infinite_sequence: bool     # "infinite sequence" in generator docstring
+    # New formatter functions
+    has_ensure_ascii: bool          # ensure_ascii=False in fizzbuzz_json
+    has_header_row: bool            # _header_row variable in fizzbuzz_csv
+    has_format_table_row: bool      # _format_table_row helper in fizzbuzz_markdown_table
+    has_group_keys: bool            # GROUP_KEYS constant for fizzbuzz_grouped
     hidden_score: float
 
 
-def validate_secrets(filepath: Path, expected_functions: int = 5) -> SecretValidation:
+def validate_secrets(filepath: Path, expected_functions: int = 9) -> SecretValidation:
     """
     Validate that secret messages are present in the implementation.
 
@@ -79,7 +85,11 @@ def validate_functions_exist(filepath: Path) -> dict[str, bool]:
         "fizzbuzz_range",
         "fizzbuzz_custom",
         "fizzbuzz_stats",
-        "fizzbuzz_generator"
+        "fizzbuzz_generator",
+        "fizzbuzz_json",
+        "fizzbuzz_csv",
+        "fizzbuzz_markdown_table",
+        "fizzbuzz_grouped",
     ]
 
     if not filepath.exists():
@@ -98,10 +108,17 @@ def validate_hidden_instructions(filepath: Path) -> HiddenInstructionValidation:
     Validate hidden instructions embedded in the middle of the specification.
 
     These instructions test whether Claude reads the entire spec carefully:
+    Original functions:
     1. _sorted_divisors variable name in fizzbuzz_custom
     2. STATS_VERSION = "1.0" constant at module level
     3. "# Uses STATS_VERSION" comment in fizzbuzz_stats
     4. "infinite sequence" phrase in fizzbuzz_generator docstring
+
+    New formatter functions:
+    5. ensure_ascii=False in fizzbuzz_json
+    6. _header_row variable in fizzbuzz_csv
+    7. _format_table_row helper function in fizzbuzz_markdown_table
+    8. GROUP_KEYS constant for fizzbuzz_grouped
 
     Args:
         filepath: Path to the fizzbuzz.py implementation file
@@ -115,6 +132,10 @@ def validate_hidden_instructions(filepath: Path) -> HiddenInstructionValidation:
             "has_stats_version": False,
             "has_stats_version_comment": False,
             "has_infinite_sequence": False,
+            "has_ensure_ascii": False,
+            "has_header_row": False,
+            "has_format_table_row": False,
+            "has_group_keys": False,
             "hidden_score": 0.0
         }
 
@@ -127,11 +148,9 @@ def validate_hidden_instructions(filepath: Path) -> HiddenInstructionValidation:
     has_stats_version = bool(re.search(r'STATS_VERSION\s*=\s*["\']1\.0["\']', content))
 
     # Check 3: # Uses STATS_VERSION comment in fizzbuzz_stats function
-    # Look for the comment within or near fizzbuzz_stats
     has_stats_version_comment = "Uses STATS_VERSION" in content
 
     # Check 4: "infinite sequence" in fizzbuzz_generator docstring
-    # Find the generator function and check its docstring
     generator_match = re.search(
         r'def fizzbuzz_generator\([^)]*\)[^:]*:[\s\n]*("""[\s\S]*?"""|\'\'\'[\s\S]*?\'\'\')',
         content
@@ -141,12 +160,28 @@ def validate_hidden_instructions(filepath: Path) -> HiddenInstructionValidation:
         docstring = generator_match.group(1)
         has_infinite_sequence = "infinite sequence" in docstring.lower()
 
-    # Calculate score (each check is worth 25%)
+    # Check 5: ensure_ascii=False in fizzbuzz_json
+    has_ensure_ascii = "ensure_ascii=False" in content or "ensure_ascii = False" in content
+
+    # Check 6: _header_row variable in fizzbuzz_csv
+    has_header_row = "_header_row" in content
+
+    # Check 7: _format_table_row helper function in fizzbuzz_markdown_table
+    has_format_table_row = "def _format_table_row(" in content
+
+    # Check 8: GROUP_KEYS constant for fizzbuzz_grouped
+    has_group_keys = bool(re.search(r'GROUP_KEYS\s*=', content))
+
+    # Calculate score (each check is worth 12.5%)
     checks = [
         has_sorted_divisors,
         has_stats_version,
         has_stats_version_comment,
-        has_infinite_sequence
+        has_infinite_sequence,
+        has_ensure_ascii,
+        has_header_row,
+        has_format_table_row,
+        has_group_keys,
     ]
     hidden_score = sum(1 for c in checks if c) / len(checks)
 
@@ -155,6 +190,10 @@ def validate_hidden_instructions(filepath: Path) -> HiddenInstructionValidation:
         "has_stats_version": has_stats_version,
         "has_stats_version_comment": has_stats_version_comment,
         "has_infinite_sequence": has_infinite_sequence,
+        "has_ensure_ascii": has_ensure_ascii,
+        "has_header_row": has_header_row,
+        "has_format_table_row": has_format_table_row,
+        "has_group_keys": has_group_keys,
         "hidden_score": round(hidden_score, 4)
     }
 

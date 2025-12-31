@@ -83,6 +83,10 @@ class ResultsAnalyzer:
                 "stats_version": sum(1 for t in trials if t.get("hidden_stats_version", False)) / n,
                 "stats_comment": sum(1 for t in trials if t.get("hidden_stats_comment", False)) / n,
                 "infinite_seq": sum(1 for t in trials if t.get("hidden_infinite_seq", False)) / n,
+                "ensure_ascii": sum(1 for t in trials if t.get("hidden_ensure_ascii", False)) / n,
+                "header_row": sum(1 for t in trials if t.get("hidden_header_row", False)) / n,
+                "format_table_row": sum(1 for t in trials if t.get("hidden_format_table_row", False)) / n,
+                "group_keys": sum(1 for t in trials if t.get("hidden_group_keys", False)) / n,
             }
 
             # Hidden score statistics
@@ -205,6 +209,10 @@ class ResultsAnalyzer:
             "stats_version": "STATS_VERSION定数",
             "stats_comment": "Uses STATS_VERSIONコメント",
             "infinite_seq": "infinite sequenceフレーズ",
+            "ensure_ascii": "ensure_ascii=False",
+            "header_row": "_header_row変数名",
+            "format_table_row": "_format_table_row関数",
+            "group_keys": "GROUP_KEYS定数",
         }
 
         for level in sorted(summary.keys()):
