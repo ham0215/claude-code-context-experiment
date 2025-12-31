@@ -40,7 +40,7 @@ class ExperimentRunner:
             "50%": {"chunks": 80, "target_percent": 50},
             "80%": {"chunks": 128, "target_percent": 80},
         }
-        self.trials_per_level = 3
+        self.trials_per_level = 5
 
         # Load prompts and spec
         self.implementation_prompt = self._load_implementation_prompt()
