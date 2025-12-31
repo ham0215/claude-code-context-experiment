@@ -35,10 +35,12 @@ class ExperimentRunner:
         # Target: 30% = 60K tokens = 48 chunks
         #         50% = 100K tokens = 80 chunks
         #         80% = 160K tokens = 128 chunks
+        #         90% = 180K tokens = 144 chunks
         self.context_levels = {
             "30%": {"chunks": 48, "target_percent": 30},
             "50%": {"chunks": 80, "target_percent": 50},
             "80%": {"chunks": 128, "target_percent": 80},
+            "90%": {"chunks": 144, "target_percent": 90},
         }
         self.trials_per_level = 5
 
