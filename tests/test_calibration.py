@@ -38,7 +38,7 @@ class TestCalibrator:
             duration_ms=1000,
         )
 
-        context_values = [0.0, 2.5, 5.0, 7.5, 10.0, 12.5, 15.0]
+        context_values = [0.0, 0.0, 2.5, 2.5, 5.0, 5.0, 7.5, 7.5, 10.0, 10.0, 12.5, 12.5, 15.0]
         context_iter = iter(context_values)
 
         with patch("calibration.ContextController") as mock_controller_cls:
@@ -92,7 +92,7 @@ class TestCalibrator:
             duration_ms=0,
         )
 
-        context_values = [0.0, 2.5, 5.0, 7.5]
+        context_values = [0.0, 0.0, 2.5, 2.5, 5.0, 5.0, 7.5, 7.5]
         context_iter = iter(context_values)
 
         with patch("calibration.ContextController") as mock_controller_cls:
@@ -244,7 +244,7 @@ class TestCalibrationMeasurements:
             duration_ms=1234,
         )
 
-        context_values = [0.0, 2.55]
+        context_values = [0.0, 0.0, 2.55, 2.55]
         context_iter = iter(context_values)
 
         with patch("calibration.ContextController") as mock_controller_cls:

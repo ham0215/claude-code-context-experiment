@@ -347,7 +347,7 @@ class TestClaudeSessionManagerSync:
             duration_ms=1000,
         )
 
-        async def mock_send_with_retry(prompt):
+        async def mock_send_with_retry(self, prompt):
             return expected_result
 
         with patch.object(
