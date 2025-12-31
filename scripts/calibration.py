@@ -1,7 +1,7 @@
 """Calibration script for determining context consumption per chunk."""
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -16,7 +16,7 @@ class Calibrator:
         self.controller = ContextController(project_root)
         self.results_file = project_root / "results" / "calibration.json"
 
-    def calibrate(self, num_samples: int = 6) -> dict:
+    def calibrate(self, num_samples: int = 10) -> dict:
         """
         Measure average context increase per noise chunk.
 
@@ -24,7 +24,7 @@ class Calibrator:
             num_samples: Number of chunks to test
 
         Returns:
-            Dictionary with calibration data including token-based measurements
+            Dictionary with calibration data
         """
         self.controller.start_trial()
         baseline = self.controller.get_context_percent()
@@ -48,19 +48,16 @@ class Calibrator:
                 "before_percent": round(before, 2),
                 "after_percent": round(after, 2),
                 "increase_percent": round(increase, 2),
-                "input_tokens": result.input_tokens,
-                "output_tokens": result.output_tokens,
-                "total_tokens": result.total_tokens,
                 "success": result.success,
                 "duration_ms": result.duration_ms,
             }
             measurements.append(measurement)
 
             print(f"Chunk {i}: {before:.1f}% -> {after:.1f}% (+{increase:.2f}%)")
-            print(f"  Tokens: input={result.input_tokens}, output={result.output_tokens}")
 
             if not result.success:
                 print(f"  Warning: {result.error}")
+                break
 
             # Stop if context is getting too high
             if after > 85:
@@ -76,25 +73,16 @@ class Calibrator:
         successful = [m for m in measurements if m["success"]]
         if successful:
             avg_increase = sum(m["increase_percent"] for m in successful) / len(successful)
-            avg_input_tokens = sum(m["input_tokens"] for m in successful) / len(successful)
-            avg_output_tokens = sum(m["output_tokens"] for m in successful) / len(successful)
-            avg_total_tokens = sum(m["total_tokens"] for m in successful) / len(successful)
         else:
             avg_increase = 0
-            avg_input_tokens = 0
-            avg_output_tokens = 0
-            avg_total_tokens = 0
 
         calibration_data = {
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "baseline": baseline,
             "num_samples": len(measurements),
             "successful_samples": len(successful),
             "measurements": measurements,
             "average_increase_percent": round(avg_increase, 3),
-            "average_input_tokens_per_chunk": round(avg_input_tokens, 0),
-            "average_output_tokens_per_chunk": round(avg_output_tokens, 0),
-            "average_total_tokens_per_chunk": round(avg_total_tokens, 0),
             "final_usage": usage,
         }
 
@@ -134,7 +122,6 @@ def main():
     if existing and "error" not in existing:
         print("Previous calibration found:")
         print(f"  Average increase per chunk: {existing.get('average_increase_percent', 0):.2f}%")
-        print(f"  Average tokens per chunk: {existing.get('average_total_tokens_per_chunk', 0):.0f}")
         print(f"  Samples: {existing.get('num_samples', 0)}")
         print()
 
@@ -144,7 +131,7 @@ def main():
             return
 
     print("Starting calibration...")
-    print("This will send noise chunks to Claude and measure token consumption.")
+    print("This will send noise chunks to Claude CLI and measure context consumption.")
     print()
 
     calibration_data = calibrator.calibrate()
@@ -154,19 +141,16 @@ def main():
         return
 
     avg_increase = calibration_data["average_increase_percent"]
-    avg_tokens = calibration_data["average_total_tokens_per_chunk"]
 
     print()
     print("=" * 60)
     print("Calibration Complete")
     print("=" * 60)
     print(f"Average context increase per chunk: {avg_increase:.2f}%")
-    print(f"Average tokens per chunk: {avg_tokens:.0f}")
     print()
-    print(f"Final token usage:")
-    print(f"  Input tokens: {calibration_data['final_usage']['input_tokens']}")
-    print(f"  Output tokens: {calibration_data['final_usage']['output_tokens']}")
-    print(f"  Context consumed: {calibration_data['final_usage']['context_percent']:.1f}%")
+    print(f"Final usage:")
+    print(f"  Estimated tokens: {calibration_data['final_usage'].get('estimated_tokens', 0):,}")
+    print(f"  Context consumed: {calibration_data['final_usage'].get('context_percent', 0):.1f}%")
 
     # Estimate chunks needed for each target level
     print()
@@ -174,8 +158,7 @@ def main():
     if avg_increase > 0:
         for target in [30, 50, 80]:
             chunks = int(target / avg_increase)
-            tokens_needed = int(chunks * avg_tokens)
-            print(f"  {target}%: ~{chunks} chunks (~{tokens_needed:,} tokens)")
+            print(f"  {target}%: ~{chunks} chunks")
     else:
         print("  Unable to estimate (no successful measurements)")
 

@@ -59,6 +59,12 @@ class ResultsAnalyzer:
             times = [t["elapsed_seconds"] for t in trials]
             time_mean = sum(times) / n
 
+            # Context consumption statistics
+            target_percents = [t.get("target_context_percent", 0) for t in trials]
+            actual_percents = [t.get("actual_context_percent", 0) for t in trials]
+            target_mean = sum(target_percents) / n if target_percents else 0
+            actual_mean = sum(actual_percents) / n if actual_percents else 0
+
             # Function-level success rates
             func_rates = {}
             func_names = ["fizzbuzz", "fizzbuzz_range", "fizzbuzz_custom",
@@ -73,6 +79,8 @@ class ResultsAnalyzer:
 
             summary[level] = {
                 "count": n,
+                "target_context_percent": round(target_mean, 1),
+                "actual_context_percent": round(actual_mean, 1),
                 "test_success_rate": round(test_rate, 4),
                 "test_passed": test_passed,
                 "secret_score_mean": round(secret_mean, 4),
@@ -151,14 +159,16 @@ class ResultsAnalyzer:
         ]
 
         # Table header
-        lines.append(f"{'Level':<10} {'N':>6} {'Pass Rate':>12} {'Secret Mean':>12} {'Secret Std':>12}")
-        lines.append("-" * 60)
+        lines.append(f"{'Level':<8} {'N':>4} {'Target':>8} {'Actual':>8} {'Pass Rate':>10} {'Secret':>8} {'Time':>8}")
+        lines.append("-" * 70)
 
         for level in sorted(summary.keys()):
             s = summary[level]
             lines.append(
-                f"{level:<10} {s['count']:>6} {s['test_success_rate']:>12.2%} "
-                f"{s['secret_score_mean']:>12.4f} {s['secret_score_std']:>12.4f}"
+                f"{level:<8} {s['count']:>4} "
+                f"{s['target_context_percent']:>7.1f}% {s['actual_context_percent']:>7.1f}% "
+                f"{s['test_success_rate']:>9.1%} {s['secret_score_mean']:>8.2f} "
+                f"{s['response_time_mean']:>7.1f}s"
             )
 
         lines.extend(["", "【関数別成功率】", ""])

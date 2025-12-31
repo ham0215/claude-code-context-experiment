@@ -2,9 +2,10 @@
 
 import json
 import random
+import re
 import subprocess
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -21,6 +22,7 @@ class ExperimentRunner:
         self.tests_dir = project_root / "tests"
         self.results_dir = project_root / "results"
         self.prompts_dir = project_root / "prompts"
+        self.docs_dir = project_root / "docs"
 
         self.controller = ContextController(project_root)
 
@@ -30,10 +32,11 @@ class ExperimentRunner:
             "50%": {"min": 45, "max": 55},
             "80%": {"min": 75, "max": 85},
         }
-        self.trials_per_level = 100
+        self.trials_per_level = 3  # Default to 3 for testing
 
-        # Load implementation prompt
+        # Load prompts and spec
         self.implementation_prompt = self._load_implementation_prompt()
+        self.fizzbuzz_spec = self._load_fizzbuzz_spec()
 
     def _load_implementation_prompt(self) -> str:
         """Load the implementation prompt."""
@@ -42,6 +45,50 @@ class ExperimentRunner:
             return prompt_path.read_text()
         else:
             raise FileNotFoundError(f"Implementation prompt not found at {prompt_path}")
+
+    def _load_fizzbuzz_spec(self) -> str:
+        """Load the FizzBuzz specification."""
+        spec_path = self.docs_dir / "fizzbuzz_spec.md"
+        if spec_path.exists():
+            return spec_path.read_text()
+        else:
+            raise FileNotFoundError(f"FizzBuzz spec not found at {spec_path}")
+
+    def _build_full_prompt(self) -> str:
+        """Build the full implementation prompt including spec."""
+        prompt = f"""以下は FizzBuzz の仕様書です:
+
+{self.fizzbuzz_spec}
+
+---
+
+{self.implementation_prompt}
+
+重要: Pythonコードのみを出力してください。説明は不要です。
+コードは ```python と ``` で囲んでください。
+ファイルパス: src/fizzbuzz.py
+"""
+        return prompt
+
+    def _extract_code_from_response(self, response: str) -> Optional[str]:
+        """Extract Python code from response."""
+        # Try to find code block
+        pattern = r"```python\s*(.*?)```"
+        matches = re.findall(pattern, response, re.DOTALL)
+        if matches:
+            return matches[0].strip()
+
+        # Try without language specifier
+        pattern = r"```\s*(.*?)```"
+        matches = re.findall(pattern, response, re.DOTALL)
+        if matches:
+            return matches[0].strip()
+
+        # If no code block, return the whole response (might be just code)
+        if "def fizzbuzz" in response:
+            return response.strip()
+
+        return None
 
     def setup(self) -> None:
         """Setup experiment environment."""
@@ -137,58 +184,53 @@ class ExperimentRunner:
         Returns:
             Dictionary with trial results
         """
-        timestamp = datetime.utcnow().isoformat() + "Z"
+        timestamp = datetime.now(timezone.utc).isoformat()
         start_time = time.time()
 
         # Step 1: Clean up previous implementation
         self.cleanup_implementation()
 
-        # Step 2: Start fresh session (reset token tracking)
+        # Step 2: Start fresh session
         self.controller.start_trial()
 
         # Step 3: Inject noise to reach target context level
-        context_start = 0.0
-        chunk_id = 0
-        max_chunks = 100
-
         print(f"  Adjusting context to {target_min}-{target_max}%...")
-        while context_start < target_min and chunk_id < max_chunks:
-            try:
-                result = self.controller.inject_noise_chunk(chunk_id)
-                if not result.success:
-                    print(f"  Warning: Chunk {chunk_id} injection failed: {result.error}")
-                context_start = self.controller.get_context_percent()
-                chunk_id += 1
-
-                if context_start > target_max:
-                    print(f"  Overshoot: {context_start:.1f}% > {target_max}%")
-                    break
-
-            except FileNotFoundError:
-                print(f"  No more chunks available after {chunk_id}")
-                break
-
-        print(f"  Context at {context_start:.1f}% after {chunk_id} chunks")
+        context_start, chunk_count = self.controller.adjust_to_target(
+            target_min, target_max
+        )
+        print(f"  Context at {context_start:.1f}% after {chunk_count} chunks")
 
         # Step 4: Send implementation prompt
         print("  Sending implementation prompt...")
         impl_start_time = time.time()
-        impl_result = self.controller.send_implementation_prompt(self.implementation_prompt)
+        full_prompt = self._build_full_prompt()
+        impl_result = self.controller.send_implementation_prompt(full_prompt)
         implementation_time = time.time() - impl_start_time
 
-        # Step 5: Record final context
+        # Step 5: Extract and save code
+        impl_file = self.src_dir / "fizzbuzz.py"
+        code_extracted = False
+        if impl_result.success:
+            code = self._extract_code_from_response(impl_result.content)
+            if code:
+                impl_file.write_text(code)
+                code_extracted = True
+                print("  Code extracted and saved")
+            else:
+                print("  Warning: Could not extract code from response")
+
+        # Step 6: Record final context
         context_end = self.controller.get_context_percent()
 
-        # Step 6: End session and get usage
+        # Step 7: End session and get usage
         usage = self.controller.end_trial()
 
         elapsed_seconds = time.time() - start_time
 
-        # Step 7: Run validation
+        # Step 8: Run validation
         print("  Running pytest...")
         test_results = self.run_pytest()
 
-        impl_file = self.src_dir / "fizzbuzz.py"
         secret_validation = validate_secrets(impl_file)
         func_existence = validate_functions_exist(impl_file)
 
@@ -198,16 +240,15 @@ class ExperimentRunner:
             "context_level": context_level,
             "context_actual_start": round(context_start, 2),
             "context_actual_end": round(context_end, 2),
-            "chunks_injected": chunk_id,
+            "chunks_injected": chunk_count,
             "timestamp": timestamp,
             "elapsed_seconds": round(elapsed_seconds, 2),
             "implementation_seconds": round(implementation_time, 2),
-            # Token usage
-            "total_input_tokens": usage["input_tokens"],
-            "total_output_tokens": usage["output_tokens"],
-            "total_tokens": usage["total_tokens"],
+            # Usage info
+            "estimated_tokens": usage.get("estimated_tokens", 0),
+            "message_count": usage.get("message_count", 0),
             # Implementation result
-            "implementation_success": impl_result.success,
+            "implementation_success": impl_result.success and code_extracted,
             "implementation_error": impl_result.error,
             "implementation_duration_ms": impl_result.duration_ms,
             # Test results
@@ -301,7 +342,7 @@ class ExperimentRunner:
 
                 status = "PASS" if result["test_passed"] else "FAIL"
                 print(f"  Result: {status}, Secret Score: {result['secret_score']:.2f}")
-                print(f"  Tokens: {result['total_tokens']:,}")
+                print(f"  Estimated tokens: {result['estimated_tokens']:,}")
                 print()
 
             except Exception as e:
@@ -312,7 +353,7 @@ class ExperimentRunner:
                         "trial_id": trial_id,
                         "context_level": context_level,
                         "error": str(e),
-                        "timestamp": datetime.utcnow().isoformat() + "Z",
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
                     }
                 )
                 with open(results_file, "w") as f:
@@ -321,6 +362,32 @@ class ExperimentRunner:
 
         print("Experiment complete!")
         print(f"Results saved to {results_file}")
+
+        # Generate analysis report
+        self._generate_report(all_results)
+
+    def _generate_report(self, results: list[dict]) -> None:
+        """Generate and save analysis report."""
+        from analyze_results import ResultsAnalyzer
+
+        analyzer = ResultsAnalyzer(self.results_dir)
+        analyzer.results = results
+
+        report = analyzer.generate_report()
+
+        # Save text report
+        report_file = self.results_dir / "analysis_report.txt"
+        with open(report_file, "w") as f:
+            f.write(report)
+
+        # Save JSON summary
+        summary = analyzer.calculate_summary()
+        summary_file = self.results_dir / "analysis_summary.json"
+        with open(summary_file, "w") as f:
+            json.dump(summary, f, indent=2)
+
+        print(f"\nReport saved to {report_file}")
+        print(f"Summary saved to {summary_file}")
 
 
 def main():

@@ -1,20 +1,19 @@
-"""Context controller for managing Claude Code context consumption."""
+"""Context controller for managing Claude context consumption."""
 
 from pathlib import Path
 from typing import Optional
 
-from claude_sdk_wrapper import ClaudeSessionManager, SessionResult
+from claude_cli_wrapper import ClaudeCLISessionManager, SessionResult
 
 
 class ContextController:
-    """Controls context consumption for Claude Code experiments."""
+    """Controls context consumption for Claude experiments."""
 
     def __init__(self, project_root: Path):
         self.project_root = project_root
         self.noise_chunks_dir = project_root / "noise_chunks"
         self.prompts_dir = project_root / "prompts"
-        self.session_manager = ClaudeSessionManager(project_root)
-        self.chunk_increase_rate: Optional[float] = None
+        self.session_manager = ClaudeCLISessionManager(project_root)
         self._noise_template: Optional[str] = None
 
     def _load_noise_template(self) -> str:
@@ -24,35 +23,29 @@ class ContextController:
             if template_path.exists():
                 self._noise_template = template_path.read_text()
             else:
-                # Default template if file doesn't exist
+                # Default template - short acknowledgment request
                 self._noise_template = (
-                    "Please read and acknowledge the following reference material. "
-                    "Just respond with 'Acknowledged' after reading:\n\n{noise_content}"
+                    "Read this reference material and respond with only 'OK':\n\n{noise_content}"
                 )
         return self._noise_template
 
     def get_context_percent(self) -> float:
         """
-        Get current context consumption percentage.
-
-        Calculated from cumulative token usage against 200K limit.
+        Get current context consumption percentage (estimated).
 
         Returns:
-            Current context percentage (0-100)
+            Estimated context percentage (0-100)
         """
-        return self.session_manager.get_context_percent()
+        return self.session_manager.get_estimated_context_percent()
 
     def clear_context(self) -> bool:
         """
-        Clear context by resetting token tracking.
-
-        Note: Each query() call starts a fresh session, so we just
-        reset the cumulative token counter.
+        Clear context by resetting session.
 
         Returns:
             True if successful
         """
-        self.session_manager.reset_usage()
+        self.session_manager.reset_session()
         return True
 
     def inject_noise_chunk(self, chunk_id: int) -> SessionResult:
@@ -63,7 +56,7 @@ class ContextController:
             chunk_id: ID of the noise chunk to inject
 
         Returns:
-            SessionResult with token usage information
+            SessionResult with response
 
         Raises:
             FileNotFoundError: If chunk file doesn't exist
@@ -87,25 +80,26 @@ class ContextController:
             prompt: The implementation prompt text
 
         Returns:
-            SessionResult with response and token usage
+            SessionResult with response
         """
-        return self.session_manager.send_message(prompt)
+        return self.session_manager.send_message(prompt, timeout=180)
 
     def start_trial(self) -> None:
-        """Start a new trial with fresh token tracking."""
-        self.session_manager.reset_usage()
+        """Start a new trial with fresh session."""
+        self.session_manager.reset_session()
 
     def end_trial(self) -> dict:
         """
-        End trial and return token usage summary.
+        End trial and return usage summary.
 
         Returns:
-            Dictionary with token usage details
+            Dictionary with usage details
         """
-        usage = self.session_manager.get_token_usage()
-        return usage
+        return self.session_manager.get_token_usage()
 
-    def adjust_to_target(self, target_min: int, target_max: int) -> tuple[float, int]:
+    def adjust_to_target(
+        self, target_min: int, target_max: int
+    ) -> tuple[float, int]:
         """
         Adjust context to target range by injecting noise chunks.
 
@@ -116,24 +110,26 @@ class ContextController:
         Returns:
             Tuple of (actual context percentage, number of chunks injected)
         """
-        self.clear_context()
-        current = self.get_context_percent()
         chunk_id = 0
-        max_chunks = 100  # Safety limit
+        max_chunks = 200  # Safety limit
+
+        current = self.get_context_percent()
 
         while current < target_min and chunk_id < max_chunks:
             try:
                 result = self.inject_noise_chunk(chunk_id)
                 if not result.success:
                     print(f"Warning: Chunk {chunk_id} injection failed: {result.error}")
+                    break
                 current = self.get_context_percent()
                 chunk_id += 1
 
-                print(f"  Chunk {chunk_id-1}: context now at {current:.1f}%")
+                if chunk_id % 5 == 0:  # Print every 5 chunks to reduce output
+                    print(f"  Chunk {chunk_id}: context at {current:.1f}%")
 
                 # Check for overshoot
                 if current > target_max:
-                    print(f"Overshoot: {current:.1f}% > {target_max}%")
+                    print(f"  Reached target: {current:.1f}%")
                     break
 
             except FileNotFoundError:
@@ -175,5 +171,4 @@ if __name__ == "__main__":
     else:
         print("No noise chunks directory found")
 
-    # Test context percentage
     print(f"Current context: {controller.get_context_percent():.2f}%")
