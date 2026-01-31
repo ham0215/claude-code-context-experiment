@@ -391,12 +391,25 @@ class ExperimentRunner:
 
         elapsed_seconds = time.time() - start_time
 
-        # Run validation
-        print("  Running pytest...")
-        test_results = self.run_pytest()
-        secret_validation = validate_secrets(impl_file)
-        func_existence = validate_functions_exist(impl_file)
-        hidden_validation = validate_hidden_instructions(impl_file)
+        # Run validation (only if code was extracted)
+        if code_extracted:
+            print("  Running pytest...")
+            test_results = self.run_pytest()
+            secret_validation = validate_secrets(impl_file)
+            func_existence = validate_functions_exist(impl_file)
+            hidden_validation = validate_hidden_instructions(impl_file)
+        else:
+            print("  Skipping validation (no code extracted)")
+            test_results = {"passed": False, "tests_passed": 0, "tests_failed": 0, "tests_total": 0, "error": "No code extracted"}
+            secret_validation = {"has_header": False, "has_footer": False, "ref_count": 0, "secret_score": 0.0}
+            func_existence = {}
+            hidden_validation = {
+                "has_sorted_divisors": False, "has_stats_version": False,
+                "has_stats_version_comment": False, "has_infinite_sequence": False,
+                "has_ensure_ascii": False, "has_header_row": False,
+                "has_format_table_row": False, "has_group_keys": False,
+                "hidden_score": 0.0
+            }
 
         # Truncate stdout/stderr for storage (keep first/last 2000 chars each)
         def truncate_output(text: str, max_len: int = 4000) -> str:
