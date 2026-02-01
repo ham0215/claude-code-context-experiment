@@ -73,13 +73,18 @@ claude-code-context-experiment/
 ├── tests/
 │   └── test_fizzbuzz.py              # テストコード
 ├── scripts/
-│   ├── experiment_runner.py          # 実験ランナー（単一プロンプト方式）
+│   ├── experiment_runner.py          # 実験ランナー（単一/バッチ/並列対応）
 │   ├── analyze_results.py            # 結果分析
 │   ├── validate_local.py             # 検証ロジック
 │   └── generate_noise_chunks.py      # ノイズチャンク生成
 ├── noise_chunks/                     # コンテキスト消費用ノイズファイル（200個）
 ├── prompts/
 │   └── implementation_prompt.txt     # 実装依頼プロンプト
+├── .claude/
+│   ├── agents/
+│   │   └── context-experiment-runner.md  # 並列実行用サブエージェント
+│   └── commands/
+│       └── run-experiment-parallel.md    # 並列実行スキル
 └── results/                          # 結果保存（.gitignoreで除外）
 ```
 
@@ -143,12 +148,39 @@ python scripts/generate_noise_chunks.py
 
 ### 実験実行
 
-```bash
-# 実験実行
-cd scripts && python experiment_runner.py
+#### 方法1: 並列実行（推奨）
 
-# 結果分析
-python analyze_results.py
+Claude Codeのサブエージェント機能を使用して、独立したコンテキストで並列実行。
+
+```bash
+# Claude Codeでスキルを実行
+/run-experiment-parallel
+```
+
+各サブエージェントが独立したコンテキストを持つため、実験の目的（コンテキスト消費の影響検証）に最適。
+
+**並列実行の仕組み:**
+- `context-experiment-runner` エージェントを複数同時起動
+- 各エージェントがバッチ（例: 10試行ずつ）を担当
+- 結果は `results/trial_*.json` に個別保存
+
+#### 方法2: 単一試行/バッチ実行
+
+```bash
+# 単一試行（例: 30%レベル、試行1）
+python scripts/experiment_runner.py --single --level "30%" --trial 1
+
+# バッチ実行（例: 30%レベル、試行1-10）
+python scripts/experiment_runner.py --batch --level "30%" --batch-start 1 --batch-end 10
+
+# 対話型フル実行（直列、400試行）
+python scripts/experiment_runner.py
+```
+
+### 結果分析
+
+```bash
+python scripts/analyze_results.py
 ```
 
 ---
@@ -215,6 +247,7 @@ Level       N   Target   Actual  Pass Rate   Secret   Hidden     Time
 
 | 日付 | バージョン | 変更内容 |
 |------|------------|----------|
+| 2025-02-01 | 3.0 | サブエージェントによる並列実行サポート追加、CLI引数対応 |
 | 2024-12-31 | 2.1 | 90%コンテキストレベル追加、段階的アプローチ実装、詳細エラー記録追加 |
 | 2024-12-31 | 2.0 | 単一プロンプト方式に変更、フォーマッター関数追加、隠し指示チェック追加 |
 | 2024-12-26 | 1.0 | 初版作成 |
