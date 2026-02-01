@@ -85,6 +85,9 @@ claude-code-context-experiment/
 │   │   └── context-experiment-runner.md  # 並列実行用サブエージェント
 │   └── commands/
 │       └── run-experiment-parallel.md    # 並列実行スキル
+├── workspaces/                       # 試行別ワークスペース（並列実行時、.gitignoreで除外）
+│   └── trial_{level}_{number}/
+│       └── src/fizzbuzz.py
 └── results/                          # 結果保存（.gitignoreで除外）
 ```
 
@@ -161,7 +164,9 @@ Claude Codeのサブエージェント機能を使用して、独立したコン
 
 **並列実行の仕組み:**
 - `context-experiment-runner` エージェントを複数同時起動
-- 各エージェントがバッチ（例: 10試行ずつ）を担当
+- **1試行1エージェント（MUST）**: コンテキスト分離を保証するため、各エージェントは1試行のみ実行
+- **ワークスペース分離**: 各試行は `workspaces/trial_{level}_{number}/` に実装を生成（ファイル競合防止）
+- **コンテキスト測定**: `/context` コマンドで実際の消費量を記録
 - 結果は `results/trial_*.json` に個別保存
 
 #### 方法2: 単一試行/バッチ実行
@@ -199,7 +204,13 @@ python scripts/analyze_results.py
 ### 4. 関数別成功率
 - 9つの関数それぞれの実装成否
 
-### 5. 詳細エラー情報
+### 5. コンテキスト測定（/context コマンド）
+- `context_used_tokens`: 使用トークン数
+- `context_total_tokens`: 総トークン数
+- `context_percent`: 消費率（%）
+- `context_raw_output`: `/context` コマンドの生出力
+
+### 6. 詳細エラー情報
 - `cli_returncode`: CLIの終了コード
 - `cli_stderr`: 標準エラー出力
 - `cli_stdout_preview`: 標準出力のプレビュー
@@ -247,6 +258,7 @@ Level       N   Target   Actual  Pass Rate   Secret   Hidden     Time
 
 | 日付 | バージョン | 変更内容 |
 |------|------------|----------|
+| 2026-02-01 | 3.1 | ワークスペース分離、/context測定、1試行1エージェント必須化 |
 | 2025-02-01 | 3.0 | サブエージェントによる並列実行サポート追加、CLI引数対応 |
 | 2024-12-31 | 2.1 | 90%コンテキストレベル追加、段階的アプローチ実装、詳細エラー記録追加 |
 | 2024-12-31 | 2.0 | 単一プロンプト方式に変更、フォーマッター関数追加、隠し指示チェック追加 |
