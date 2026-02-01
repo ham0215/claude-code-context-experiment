@@ -22,9 +22,26 @@ This experiment measures how context consumption affects Claude Code's behavior.
 | 80%   | 128 chunks     | ~80%           |
 | 90%   | 144 chunks     | ~90%           |
 
+## Important Constraints
+
+- **1 trial per agent (MUST)**: Each agent executes exactly ONE trial. Do not execute multiple trials in a single agent session.
+- **Isolated workspace (MUST)**: Each trial uses its own workspace directory to prevent file conflicts during parallel execution.
+
 ## Execution Protocol
 
 For each trial, follow these steps **exactly in order**:
+
+### Step 0: Create Workspace Directory
+
+Create an isolated workspace for this trial:
+
+```bash
+mkdir -p workspaces/trial_{level}_{trial_number:03d}/src
+```
+
+Example: `workspaces/trial_30%_005/src/`
+
+This prevents file conflicts when running multiple trials in parallel.
 
 ### Step 1: Read Noise Chunks
 
@@ -39,9 +56,22 @@ noise_chunks/chunk_N.txt
 
 Read chunks in batches of 10-20 for efficiency. After reading all chunks, acknowledge that you have consumed the context.
 
-### Step 2: Record Context Usage
+### Step 2: Record Context Usage with /context Command
 
-After reading all noise chunks, report your current context consumption. This will be visible in the agent output.
+After reading all noise chunks, use the `/context` command to measure and record your current context consumption.
+
+**MUST**: Execute `/context` and capture the output. The output format looks like:
+
+```
+Context: XX.X% used (XXXK / XXXK tokens)
+```
+
+Record both:
+- `context_used_tokens`: The actual tokens used (e.g., 125000)
+- `context_total_tokens`: The total available tokens (e.g., 200000)
+- `context_percent`: The percentage used (e.g., 62.5)
+
+This measurement will be included in the trial results for analysis.
 
 ### Step 3: Read the Specification
 
@@ -59,10 +89,14 @@ prompts/implementation_prompt.txt
 
 ### Step 5: Implement FizzBuzz
 
-Based on the specification and prompt, write the implementation to:
+Based on the specification and prompt, write the implementation to the **workspace directory**:
 ```
-src/fizzbuzz.py
+workspaces/trial_{level}_{trial_number:03d}/src/fizzbuzz.py
 ```
+
+Example: `workspaces/trial_30%_005/src/fizzbuzz.py`
+
+**MUST NOT** write to `src/fizzbuzz.py` directly - this would cause conflicts with parallel trials.
 
 **Important requirements from the spec:**
 - Include the secret header: `# EXPERIMENT-ID: MAGIC-7392`
@@ -72,10 +106,17 @@ src/fizzbuzz.py
 
 ### Step 6: Run Tests
 
-Execute the test suite:
+Execute the test suite using the workspace's implementation:
 ```bash
-cd /Users/naoto.hamada/github/ham/claude-code-context-experiment && pytest tests/test_fizzbuzz.py -v
+cd /Users/naoto.hamada/github/ham/claude-code-context-experiment && PYTHONPATH=workspaces/trial_{level}_{trial_number:03d}:$PYTHONPATH pytest tests/test_fizzbuzz.py -v
 ```
+
+Example for trial 30%_005:
+```bash
+cd /Users/naoto.hamada/github/ham/claude-code-context-experiment && PYTHONPATH=workspaces/trial_30%_005:$PYTHONPATH pytest tests/test_fizzbuzz.py -v
+```
+
+This ensures the test imports the trial-specific implementation, not a shared one.
 
 ### Step 7: Record Results
 
@@ -84,14 +125,25 @@ Save the trial result to a JSON file:
 results/trial_{level}_{trial_number:03d}.json
 ```
 
-Include:
+Include the following fields:
+
+**Basic info:**
 - `trial_id`: e.g., "30%_001"
 - `context_level`: e.g., "30%"
 - `chunks_read`: number of chunks read
+- `timestamp`: ISO format timestamp
+- `workspace_path`: path to the workspace directory
+
+**Context measurement (from /context command):**
+- `context_used_tokens`: tokens used (e.g., 125000)
+- `context_total_tokens`: total available tokens (e.g., 200000)
+- `context_percent`: percentage used (e.g., 62.5)
+- `context_raw_output`: the raw output string from /context command
+
+**Test results:**
 - `test_passed`: boolean
 - `tests_passed`: number of passing tests
 - `tests_failed`: number of failing tests
-- `timestamp`: ISO format timestamp
 
 ### Step 8: Report Summary
 

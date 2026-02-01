@@ -69,7 +69,7 @@ Task ツールを使用して、`subagent_type: "context-experiment-runner"` で
 - ...
 - エージェント10: 試行91-100
 
-**重要**: 各エージェントは1試行ずつ実行する方が正確（コンテキストがリセットされる）
+**重要**: 各エージェントは1試行のみ実行すること（MUST）。コンテキスト分離を保証するため、複数試行を1エージェントで実行してはならない
 
 ### 3. 結果の集計
 
@@ -85,4 +85,32 @@ python scripts/analyze_results.py
 - ノイズチャンクの読み込みでコンテキストを消費
 - 結果は `results/trial_*.json` に個別保存
 - APIレート制限に注意して並列度を調整
-- **1試行1エージェント**が推奨（コンテキスト分離のため）
+- **1試行1エージェント**が必須（MUST）（コンテキスト分離のため）
+
+## ワークスペース分離
+
+並列実行時のファイル競合を防ぐため、各試行は独立したワークスペースを使用：
+
+```
+workspaces/
+├── trial_30%_001/
+│   └── src/fizzbuzz.py
+├── trial_30%_002/
+│   └── src/fizzbuzz.py
+...
+```
+
+**MUST NOT**: `src/fizzbuzz.py`に直接書き込まない（競合発生）
+
+## コンテキスト測定
+
+各エージェントは `/context` コマンドを使用してコンテキスト消費量を測定し、結果に記録：
+
+```json
+{
+  "context_used_tokens": 125000,
+  "context_total_tokens": 200000,
+  "context_percent": 62.5,
+  "context_raw_output": "Context: 62.5% used (125K / 200K tokens)"
+}
+```
