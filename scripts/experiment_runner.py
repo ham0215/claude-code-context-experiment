@@ -553,8 +553,75 @@ class ExperimentRunner:
         print(f"Summary saved to {summary_file}")
 
 
+def run_single(context_level: str, trial_num: int) -> dict:
+    """Run a single trial (for parallel execution via subagents).
+
+    Args:
+        context_level: One of "30%", "50%", "80%", "90%"
+        trial_num: Trial number (1-100)
+
+    Returns:
+        Trial result dictionary
+    """
+    project_root = Path(__file__).parent.parent
+    runner = ExperimentRunner(project_root)
+    runner.setup()
+
+    if context_level not in runner.context_levels:
+        raise ValueError(f"Invalid context level: {context_level}. Must be one of {list(runner.context_levels.keys())}")
+
+    level_config = runner.context_levels[context_level]
+    trial_id = f"{context_level}_{trial_num:03d}"
+
+    print(f"Running single trial: {trial_id}")
+    result = runner.run_single_trial(
+        trial_id=trial_id,
+        context_level=context_level,
+        num_chunks=level_config["chunks"],
+        target_percent=level_config["target_percent"],
+    )
+
+    status = "PASS" if result["test_passed"] else "FAIL"
+    print(f"Result: {status}, Secret Score: {result['secret_score']:.2f}")
+
+    return result
+
+
 def main():
     """Run the experiment."""
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Context Consumption Experiment Runner")
+    parser.add_argument("--single", action="store_true", help="Run a single trial")
+    parser.add_argument("--level", type=str, help="Context level (30%%, 50%%, 80%%, 90%%)")
+    parser.add_argument("--trial", type=int, help="Trial number (1-100)")
+    parser.add_argument("--batch", action="store_true", help="Run a batch of trials")
+    parser.add_argument("--batch-start", type=int, default=1, help="Start trial number for batch")
+    parser.add_argument("--batch-end", type=int, default=10, help="End trial number for batch")
+
+    args = parser.parse_args()
+
+    if args.single:
+        if not args.level or not args.trial:
+            parser.error("--single requires --level and --trial")
+        result = run_single(args.level, args.trial)
+        # Output JSON for easy parsing
+        print(json.dumps(result, indent=2))
+        return
+
+    if args.batch:
+        if not args.level:
+            parser.error("--batch requires --level")
+        results = []
+        for trial_num in range(args.batch_start, args.batch_end + 1):
+            result = run_single(args.level, trial_num)
+            results.append(result)
+        print(f"\nBatch complete: {len(results)} trials")
+        passed = sum(1 for r in results if r.get("test_passed"))
+        print(f"Passed: {passed}/{len(results)}")
+        return
+
+    # Default: interactive full experiment
     project_root = Path(__file__).parent.parent
     runner = ExperimentRunner(project_root)
 
