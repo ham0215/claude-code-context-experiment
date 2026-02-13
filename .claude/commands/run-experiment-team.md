@@ -1,0 +1,141 @@
+---
+description: チームベースでコンテキスト消費実験を実行（共有タスクリスト・進捗監視付き）
+allowed-tools: TeamCreate, TeamDelete, TaskCreate, TaskList, TaskGet, TaskUpdate, Task, SendMessage, Bash, Read, Write, Edit
+---
+
+# チームベース実験実行
+
+TeamCreate/TaskCreate/SendMessage を使用して、共有タスクリストでワーカーが自己組織的にトライアルを実行します。
+
+## 既存方式との比較
+
+| 機能 | `/run-experiment-parallel`（既存） | `/run-experiment-team`（本コマンド） |
+|------|-----------------------------------|--------------------------------------|
+| エージェント管理 | Task で個別起動 | TeamCreate でチーム化 |
+| タスク管理 | プロンプトで指示 | 共有タスクリストで自己割り当て |
+| 進捗監視 | 各エージェントの完了待ち | TaskList でリアルタイム確認 |
+| 障害対応 | エージェント単位で再起動 | 未完了タスクを別ワーカーが自動引き継ぎ |
+| クリーンアップ | なし | TeamDelete で一括削除 |
+
+## コンテキストレベル
+
+| レベル | 読み込むチャンク数 | 目標消費率 | チーム名 |
+|--------|-------------------|-----------|----------|
+| 30%    | 48 chunks         | ~30%      | `exp-30pct` |
+| 50%    | 80 chunks         | ~50%      | `exp-50pct` |
+| 80%    | 128 chunks        | ~80%      | `exp-80pct` |
+| 90%    | 144 chunks        | ~90%      | `exp-90pct` |
+
+## 使い方
+
+ユーザーから以下のパラメータを確認してください：
+
+1. **コンテキストレベル**: `30%`, `50%`, `80%`, `90%` のいずれか
+2. **試行範囲**: 開始番号と終了番号（例: 1-5）
+3. **ワーカー数**: 同時起動するワーカー数（推奨: 試行数と同数。**1トライアル1ワーカーが必須**）
+
+## 実行手順
+
+### Step 1: チーム作成
+
+レベルに応じたチーム名でチームを作成：
+
+```
+TeamCreate(team_name="exp-{level}pct", description="Context experiment at {level}% level")
+```
+
+例: `TeamCreate(team_name="exp-30pct", description="Context experiment at 30% level")`
+
+### Step 2: タスク登録
+
+各トライアルを TaskCreate でタスク登録。以下のフォーマットを使用：
+
+```
+TaskCreate:
+  subject: "Trial {level}_{number:03d}"
+  description: |
+    Execute experiment trial.
+    - context_level: {level}
+    - trial_number: {number}
+    - chunks_to_read: {chunks}
+    - chunk_range: 0-{chunks-1}
+    - workspace: workspaces/trial_{level}_{number:03d}/
+    - result_file: results/trial_{level}_{number:03d}.json
+    - project_root: /Users/naoto.hamada/github/ham/claude-code-context-experiment
+  activeForm: "Executing trial {level}_{number:03d}"
+```
+
+**例: 30% レベルで試行 1-3 の場合**
+
+```
+TaskCreate(subject="Trial 30%_001", description="Execute experiment trial.\n- context_level: 30%\n- trial_number: 1\n- chunks_to_read: 48\n- chunk_range: 0-47\n- workspace: workspaces/trial_30%_001/\n- result_file: results/trial_30%_001.json\n- project_root: /Users/naoto.hamada/github/ham/claude-code-context-experiment", activeForm="Executing trial 30%_001")
+
+TaskCreate(subject="Trial 30%_002", description="Execute experiment trial.\n- context_level: 30%\n- trial_number: 2\n- chunks_to_read: 48\n- chunk_range: 0-47\n- workspace: workspaces/trial_30%_002/\n- result_file: results/trial_30%_002.json\n- project_root: /Users/naoto.hamada/github/ham/claude-code-context-experiment", activeForm="Executing trial 30%_002")
+
+TaskCreate(subject="Trial 30%_003", description="Execute experiment trial.\n- context_level: 30%\n- trial_number: 3\n- chunks_to_read: 48\n- chunk_range: 0-47\n- workspace: workspaces/trial_30%_003/\n- result_file: results/trial_30%_003.json\n- project_root: /Users/naoto.hamada/github/ham/claude-code-context-experiment", activeForm="Executing trial 30%_003")
+```
+
+### Step 3: ワーカー起動
+
+**MUST: 1トライアル1ワーカー**。試行数と同数のワーカーを **1つのメッセージで同時に** 起動：
+
+```
+Task(
+  subagent_type="experiment-team-worker",
+  team_name="exp-{level}pct",
+  name="worker-1",
+  prompt="You are worker-1 in team exp-{level}pct. Check TaskList, claim an unassigned task, and execute the trial. Project root: /Users/naoto.hamada/github/ham/claude-code-context-experiment",
+  description="Experiment worker 1"
+)
+
+Task(
+  subagent_type="experiment-team-worker",
+  team_name="exp-{level}pct",
+  name="worker-2",
+  prompt="You are worker-2 in team exp-{level}pct. Check TaskList, claim an unassigned task, and execute the trial. Project root: /Users/naoto.hamada/github/ham/claude-code-context-experiment",
+  description="Experiment worker 2"
+)
+
+// ... 試行数分のワーカー
+```
+
+**重要**: 全ワーカーを1つのメッセージ内で並列起動すること。
+
+### Step 4: 進捗監視
+
+`TaskList` を定期的に実行して進捗を確認：
+
+- `pending`: 未着手
+- `in_progress`: 実行中
+- `completed`: 完了
+
+全タスクが `completed` になるまで監視。
+
+### Step 5: クリーンアップ
+
+全タスク完了後：
+
+1. 各ワーカーに `SendMessage(type="shutdown_request")` を送信
+2. ワーカーの終了を確認
+3. `TeamDelete` でチームとタスクリストを削除
+
+```
+SendMessage(type="shutdown_request", recipient="worker-1", content="All tasks complete")
+SendMessage(type="shutdown_request", recipient="worker-2", content="All tasks complete")
+// ...
+TeamDelete()
+```
+
+### Step 6: 結果集計
+
+```bash
+python scripts/analyze_results.py
+```
+
+## 注意事項
+
+- **1トライアル1ワーカー（MUST）**: コンテキスト分離を保証するため、各ワーカーは1試行のみ実行して停止
+- 結果 JSON は既存フォーマットと完全互換（`scripts/analyze_results.py` で集計可能）
+- ワークスペースは `workspaces/trial_{level}_{number:03d}/` に分離
+- チーム命名規則: `exp-30pct`, `exp-50pct`, `exp-80pct`, `exp-90pct`
+- API レート制限に注意してワーカー数を調整
