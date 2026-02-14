@@ -161,6 +161,22 @@ TaskUpdate(taskId="<task-2-id>", owner="worker-2")
 TaskUpdate(taskId="<task-3-id>", owner="worker-3")
 ```
 
+### Step 2c: ワークスペース事前作成
+
+ワーカー起動前に、全トライアルのワークスペースディレクトリをチームリーダー側で事前作成します。
+これにより、ワーカー側での `mkdir` 権限プロンプトを回避します。
+
+```bash
+mkdir -p workspaces/trial_{level}_{001}/src workspaces/trial_{level}_{002}/src workspaces/trial_{level}_{003}/src
+# ... 試行数分のディレクトリを1コマンドで作成
+```
+
+**例: 30% レベルで試行 1-3 の場合**
+
+```bash
+mkdir -p workspaces/trial_30%_001/src workspaces/trial_30%_002/src workspaces/trial_30%_003/src
+```
+
 ### Step 3: ワーカー起動
 
 **MUST: 1トライアル1ワーカー**。試行数と同数のワーカーを **1つのメッセージで同時に** 起動。
@@ -171,7 +187,7 @@ Task(
   subagent_type="experiment-team-worker",
   team_name="exp-{level}pct",
   name="worker-1",
-  mode="dontAsk",
+  mode="bypassPermissions",
   prompt="You are worker-1 in team exp-{level}pct. Your assigned task is 'Trial {level}_{001}'. Find it in TaskList by subject, set status to in_progress, and execute the trial. Do NOT claim any other task. Project root: /Users/naoto.hamada/github/ham/claude-code-context-experiment",
   description="Experiment worker 1"
 )
@@ -180,7 +196,7 @@ Task(
   subagent_type="experiment-team-worker",
   team_name="exp-{level}pct",
   name="worker-2",
-  mode="dontAsk",
+  mode="bypassPermissions",
   prompt="You are worker-2 in team exp-{level}pct. Your assigned task is 'Trial {level}_{002}'. Find it in TaskList by subject, set status to in_progress, and execute the trial. Do NOT claim any other task. Project root: /Users/naoto.hamada/github/ham/claude-code-context-experiment",
   description="Experiment worker 2"
 )

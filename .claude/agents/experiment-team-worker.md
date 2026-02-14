@@ -39,13 +39,18 @@ Parse the task description to extract:
 
 Then execute the following steps **exactly in order**:
 
-#### Step 0: Create Workspace Directory
+#### Step 0: Verify Workspace Directory
 
+The workspace directory is pre-created by the team lead. Verify it exists using the Read tool or `ls`:
+
+```bash
+ls {project_root}/{workspace}/src
+```
+
+If the directory does NOT exist (e.g., running outside team mode), create it:
 ```bash
 mkdir -p {project_root}/{workspace}/src
 ```
-
-Example: `mkdir -p /Users/naoto.hamada/github/ham/claude-code-context-experiment/workspaces/trial_30%_001/src`
 
 #### Step 1: Read Noise Chunks
 
