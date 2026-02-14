@@ -12,20 +12,32 @@ class ResultsAnalyzer:
 
     def __init__(self, results_dir: Path):
         self.results_dir = results_dir
-        self.results_file = results_dir / "results.json"
         self.results: list[dict] = []
 
     def load_results(self) -> bool:
-        """Load results from file."""
-        if not self.results_file.exists():
-            print(f"Results file not found: {self.results_file}")
-            return False
+        """Load results from individual trial files (trial_*.json).
 
-        with open(self.results_file, 'r') as f:
-            self.results = json.load(f)
+        Falls back to results.json for backward compatibility.
+        """
+        # Primary: load individual trial files
+        trial_files = sorted(self.results_dir.glob("trial_*.json"))
+        if trial_files:
+            for f in trial_files:
+                with open(f, 'r') as fh:
+                    self.results.append(json.load(fh))
+            print(f"Loaded {len(self.results)} trial results from individual files")
+            return True
 
-        print(f"Loaded {len(self.results)} trial results")
-        return True
+        # Fallback: load merged results.json
+        results_file = self.results_dir / "results.json"
+        if results_file.exists():
+            with open(results_file, 'r') as f:
+                self.results = json.load(f)
+            print(f"Loaded {len(self.results)} trial results from results.json")
+            return True
+
+        print(f"No trial files found in {self.results_dir}")
+        return False
 
     def group_by_level(self) -> dict[str, list[dict]]:
         """Group results by context level."""
@@ -66,7 +78,9 @@ class ResultsAnalyzer:
             # Function-level success rates
             func_rates = {}
             func_names = ["fizzbuzz", "fizzbuzz_range", "fizzbuzz_custom",
-                         "fizzbuzz_stats", "fizzbuzz_generator"]
+                         "fizzbuzz_stats", "fizzbuzz_generator",
+                         "fizzbuzz_json", "fizzbuzz_csv",
+                         "fizzbuzz_markdown_table", "fizzbuzz_grouped"]
 
             for func in func_names:
                 func_passed = sum(
