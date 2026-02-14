@@ -17,13 +17,16 @@ TeamCreate/TaskCreate/SendMessage を使用して、タスクを事前割り当�
 | 障害対応 | エージェント単位で再起動 | 未完了タスクを別ワーカーが自動引き継ぎ |
 | クリーンアップ | なし | TeamDelete で一括削除 |
 
-## コンテキストレベル
+## コンテキスト注入方式
 
-| レベル | 読み込むチャンク数 | 目標消費率 | チーム名 |
-|--------|-------------------|-----------|----------|
-| 30%    | 48 chunks         | ~30%      | `exp-30pct` |
-| 50%    | 80 chunks         | ~50%      | `exp-50pct` |
-| 80%    | 128 chunks        | ~80%      | `exp-80pct` |
+ルートの `CLAUDE.md` をレベルごとのバリアントに切り替えることで、ワーカー起動時に自動的にコンテキストが消費されます。
+ワーカー側でのチャンク読み込みは不要です。
+
+| レベル | CLAUDE.md バリアント | 目標消費率 | チーム名 |
+|--------|---------------------|-----------|----------|
+| 30%    | `claude_md_variants/CLAUDE.md.30pct` | ~30% | `exp-30pct` |
+| 50%    | `claude_md_variants/CLAUDE.md.50pct` | ~50% | `exp-50pct` |
+| 80%    | `claude_md_variants/CLAUDE.md.80pct` | ~80% | `exp-80pct` |
 
 ## 使い方
 
@@ -34,6 +37,51 @@ TeamCreate/TaskCreate/SendMessage を使用して、タスクを事前割り当�
 3. **ワーカー数**: 同時起動するワーカー数（推奨: 試行数と同数。**1トライアル1ワーカーが必須**）
 
 ## 実行手順
+
+### Step 0: CLAUDE.md 切り替え確認
+
+ルートの `CLAUDE.md` が対象レベルのバリアントに切り替え済みであることを確認します。
+
+```bash
+head -20 CLAUDE.md
+```
+
+出力に `## Context Noise ({level}% Level)` が含まれていることを確認してください。
+含まれていない場合、バリアントをコピーしてから続行：
+
+```bash
+cp claude_md_variants/CLAUDE.md.{level}pct CLAUDE.md
+```
+
+### Step 0.5: /context でコンテキスト消費量を確認
+
+CLAUDE.md の切り替え後、`/context` コマンドを実行して現在のコンテキスト消費量を確認・記録します。
+
+**出力例:**
+```
+Context: XX.X% used (XXXK / XXXK tokens)
+```
+
+**記録する値:**
+- `measured_context_percent`: 測定されたコンテキスト消費率（例: 32.5）
+
+**検証ルール — 不一致時は即座に中断:**
+
+| 目標レベル | 許容範囲 |
+|-----------|---------|
+| 30%       | 15% ≤ measured ≤ 45% |
+| 50%       | 30% ≤ measured ≤ 65% |
+| 80%       | 65% ≤ measured ≤ 95% |
+
+測定値が許容範囲外の場合、**実験を中断**してユーザーに報告してください：
+
+```
+ERROR: Context consumption mismatch.
+  Target level: {level}%
+  Measured: {measured}%
+  Expected range: {min}% - {max}%
+Please verify CLAUDE.md variant and retry.
+```
 
 ### Step 1: チーム作成
 
@@ -123,8 +171,7 @@ TaskCreate:
     Execute experiment trial.
     - context_level: {level}
     - trial_number: {number}
-    - chunks_to_read: {chunks}
-    - chunk_range: 0-{chunks-1}
+    - measured_context_percent: {measured_context_percent}
     - workspace: workspaces/trial_{level}_{number:03d}/
     - result_file: results/trial_{level}_{number:03d}.json
     - project_root: /Users/naoto.hamada/github/ham/claude-code-context-experiment
@@ -145,15 +192,15 @@ TaskUpdate(taskId="<task-3-id>", owner="worker-3")
 
 **タスクとワーカーの対応**: Trial N → worker-N（1対1対応）
 
-**例: 30% レベルで試行 1-3 の場合**
+**例: 30% レベルで試行 1-3、measured_context_percent=32.5 の場合**
 
 ```
 // Step 2a: タスク作成（並列実行可）
-TaskCreate(subject="Trial 30%_001", description="Execute experiment trial.\n- context_level: 30%\n- trial_number: 1\n- chunks_to_read: 48\n- chunk_range: 0-47\n- workspace: workspaces/trial_30%_001/\n- result_file: results/trial_30%_001.json\n- project_root: /Users/naoto.hamada/github/ham/claude-code-context-experiment", activeForm="Executing trial 30%_001")
+TaskCreate(subject="Trial 30%_001", description="Execute experiment trial.\n- context_level: 30%\n- trial_number: 1\n- measured_context_percent: 32.5\n- workspace: workspaces/trial_30%_001/\n- result_file: results/trial_30%_001.json\n- project_root: /Users/naoto.hamada/github/ham/claude-code-context-experiment", activeForm="Executing trial 30%_001")
 
-TaskCreate(subject="Trial 30%_002", description="Execute experiment trial.\n- context_level: 30%\n- trial_number: 2\n- chunks_to_read: 48\n- chunk_range: 0-47\n- workspace: workspaces/trial_30%_002/\n- result_file: results/trial_30%_002.json\n- project_root: /Users/naoto.hamada/github/ham/claude-code-context-experiment", activeForm="Executing trial 30%_002")
+TaskCreate(subject="Trial 30%_002", description="Execute experiment trial.\n- context_level: 30%\n- trial_number: 2\n- measured_context_percent: 32.5\n- workspace: workspaces/trial_30%_002/\n- result_file: results/trial_30%_002.json\n- project_root: /Users/naoto.hamada/github/ham/claude-code-context-experiment", activeForm="Executing trial 30%_002")
 
-TaskCreate(subject="Trial 30%_003", description="Execute experiment trial.\n- context_level: 30%\n- trial_number: 3\n- chunks_to_read: 48\n- chunk_range: 0-47\n- workspace: workspaces/trial_30%_003/\n- result_file: results/trial_30%_003.json\n- project_root: /Users/naoto.hamada/github/ham/claude-code-context-experiment", activeForm="Executing trial 30%_003")
+TaskCreate(subject="Trial 30%_003", description="Execute experiment trial.\n- context_level: 30%\n- trial_number: 3\n- measured_context_percent: 32.5\n- workspace: workspaces/trial_30%_003/\n- result_file: results/trial_30%_003.json\n- project_root: /Users/naoto.hamada/github/ham/claude-code-context-experiment", activeForm="Executing trial 30%_003")
 
 // Step 2b: 事前割り当て（タスクID取得後に実行）
 TaskUpdate(taskId="<task-1-id>", owner="worker-1")
@@ -242,6 +289,8 @@ python scripts/analyze_results.py
 
 ## 注意事項
 
+- **CLAUDE.md 切り替え必須**: 実験前にルートの `CLAUDE.md` が対象レベルのバリアントであることを確認。コンテキストはワーカー起動時に自動注入される
+- **コンテキスト検証必須**: `/context` で消費量を確認し、許容範囲外なら中断
 - **1トライアル1ワーカー（MUST）**: コンテキスト分離を保証するため、各ワーカーは1試行のみ実行して停止
 - **相対パスで実行（MUST）**: Bash コマンドは必ずプロジェクトルートからの **相対パス** で実行すること。`/usr/bin/ls` や `/Users/.../project/file` のような絶対パスは権限プロンプトが発生するため使用禁止。例: `ls workspaces/` ○、`/bin/ls /Users/.../workspaces/` ×
 - 結果 JSON は既存フォーマットと完全互換（`scripts/analyze_results.py` で集計可能）

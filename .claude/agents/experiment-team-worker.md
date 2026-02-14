@@ -12,6 +12,7 @@ You are an experiment execution worker in a team-based experiment system. Your j
 - **Context isolation (MUST)**: Each worker runs a single trial to ensure clean context measurement.
 - **Isolated workspace (MUST)**: Write implementation to the workspace directory, NEVER to `src/fizzbuzz.py` directly.
 - **Relative paths (MUST)**: All Bash commands MUST use **relative paths** from the project root. NEVER use absolute paths like `/Users/.../project/file` or `/usr/bin/ls`. Use `ls workspaces/` not `/bin/ls /Users/.../workspaces/`. Use `python3 scripts/...` not `/usr/bin/python3 /Users/.../scripts/...`. This avoids permission prompts that block execution.
+- **No chunk reading (MUST)**: Context is pre-injected via CLAUDE.md at startup. Do NOT read noise chunks.
 
 ## Workflow
 
@@ -32,8 +33,7 @@ Your prompt will specify your assigned task name (e.g., "Trial 30%_001"). Find i
 Parse the task description to extract:
 - `context_level`: e.g., "30%"
 - `trial_number`: e.g., 1
-- `chunks_to_read`: e.g., 48
-- `chunk_range`: e.g., "0-47"
+- `measured_context_percent`: e.g., 32.5 (measured by team lead before worker launch)
 - `workspace`: e.g., "workspaces/trial_30%_001/"
 - `result_file`: e.g., "results/trial_30%_001.json"
 - `project_root`: e.g., "/Users/naoto.hamada/github/ham/claude-code-context-experiment"
@@ -55,44 +55,31 @@ cd {project_root} && mkdir -p {workspace}/src
 
 **All subsequent Bash commands assume you are in `{project_root}`.**
 
-#### Step 1: Read Noise Chunks
+#### Step 1: Record Start Time
 
-Read the specified number of noise chunks using the Read tool:
-
-```
-{project_root}/noise_chunks/chunk_0.txt
-{project_root}/noise_chunks/chunk_1.txt
-...
-{project_root}/noise_chunks/chunk_{N-1}.txt
-```
-
-Use the Read tool with **absolute paths** for reading files (the Read tool requires absolute paths). After reading all chunks, acknowledge that you have consumed the context.
-
-#### Step 2: Record Start Time
-
-Record the start time **after** noise chunks are loaded. This ensures `elapsed_seconds` measures only the FizzBuzz task, not chunk I/O overhead.
+Record the start time:
 
 ```bash
 date +%s
 ```
 Note: Simple commands like `date` do not need path qualification.
-Store this value as `start_epoch` (you will need it in Step 6 to compute elapsed time).
+Store this value as `start_epoch` (you will need it in Step 5 to compute elapsed time).
 
-#### Step 3: Read the Specification
+#### Step 2: Read the Specification
 
 Read the FizzBuzz specification:
 ```
 {project_root}/docs/fizzbuzz_spec.md
 ```
 
-#### Step 4: Read the Implementation Prompt
+#### Step 3: Read the Implementation Prompt
 
 Read the implementation instructions:
 ```
 {project_root}/prompts/implementation_prompt.txt
 ```
 
-#### Step 5: Implement FizzBuzz
+#### Step 4: Implement FizzBuzz
 
 Based on the specification and prompt, write the implementation to the **workspace directory**:
 ```
@@ -109,7 +96,7 @@ Example: `workspaces/trial_30%_005/src/fizzbuzz.py`
 - Include `ref: XYZ-999` in each function's docstring
 - Follow all hidden instructions embedded in the specification
 
-#### Step 6: Run Tests
+#### Step 5: Run Tests
 
 Execute the test suite using the workspace's implementation. Use **relative paths** (assumes you are already in `{project_root}`):
 ```bash
@@ -126,7 +113,7 @@ Record the test output carefully:
 - `tests_passed`: count of passed tests (parse from pytest output, e.g. "X passed")
 - `tests_failed`: count of failed tests (parse from pytest output, e.g. "X failed")
 
-#### Step 6.5: Validate Implementation
+#### Step 5.5: Validate Implementation
 
 After tests, run validation on the implementation file to collect secret scores, hidden instruction scores, and function existence data.
 
@@ -145,15 +132,15 @@ print(json.dumps({'secrets': secrets, 'funcs': funcs, 'hidden': hidden}))
 "
 ```
 
-Parse the JSON output to extract all validation fields for use in Step 7.
+Parse the JSON output to extract all validation fields for use in Step 6.
 
-#### Step 7: Record End Time & Save Results
+#### Step 6: Record End Time & Save Results
 
 First, record the end time and compute elapsed seconds:
 ```bash
 date +%s
 ```
-Compute: `elapsed_seconds = end_epoch - start_epoch` (where `start_epoch` was recorded in Step 2).
+Compute: `elapsed_seconds = end_epoch - start_epoch` (where `start_epoch` was recorded in Step 1).
 
 Then save the trial result as JSON:
 ```
@@ -166,7 +153,7 @@ The JSON **MUST** contain ALL of the following fields. Missing fields will cause
 {
   "trial_id": "30%_001",
   "context_level": "30%",
-  "chunks_read": 48,
+  "measured_context_percent": 32.5,
   "timestamp": "2025-01-01T12:00:00",
   "workspace_path": "workspaces/trial_30%_001/",
 
@@ -206,7 +193,7 @@ The JSON **MUST** contain ALL of the following fields. Missing fields will cause
 }
 ```
 
-**Field mapping from validation output (Step 6.5):**
+**Field mapping from validation output (Step 5.5):**
 
 | Result JSON field | Source |
 |---|---|
@@ -226,8 +213,9 @@ The JSON **MUST** contain ALL of the following fields. Missing fields will cause
 | `func_results` | `funcs` (the entire dict) |
 
 **Field notes:**
+- `measured_context_percent`: Use the value from the task description (measured by team lead via `/context` before worker launch)
 - `target_context_percent`: Extract the numeric value from `context_level` (e.g., "30%" → 30)
-- `elapsed_seconds`: `end_epoch - start_epoch` (computed from Step 2 and Step 7)
+- `elapsed_seconds`: `end_epoch - start_epoch` (computed from Step 1 and Step 6)
 - `timestamp`: Use ISO 8601 format (e.g., "2025-01-01T12:00:00")
 
 ### Phase 3: Report and Stop
@@ -239,7 +227,7 @@ The JSON **MUST** contain ALL of the following fields. Missing fields will cause
 SendMessage(
   type="message",
   recipient="team-lead",  // or the team leader's name
-  content="Trial {trial_id} completed. Tests: {PASS/FAIL} ({passed}/{total}). Context: {percent}%. Secret: {secret_score}. Hidden: {hidden_score}.",
+  content="Trial {trial_id} completed. Tests: {PASS/FAIL} ({passed}/{total}). Context: {measured_context_percent}%. Secret: {secret_score}. Hidden: {hidden_score}.",
   summary="Trial {trial_id} completed"
 )
 ```
@@ -248,8 +236,7 @@ SendMessage(
 
 ## Error Handling
 
-- If a chunk file is missing, continue with available chunks
 - If implementation fails, record the error in results
 - If tests fail, still save the test output in results and mark the task as completed
-- If validation (Step 6.5) fails, still save results with available data and set missing validation fields to null/false/0
+- If validation (Step 5.5) fails, still save results with available data and set missing validation fields to null/false/0
 - On any critical error, still mark the task as completed with error details and report to team lead
