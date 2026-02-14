@@ -21,13 +21,12 @@ allowed-tools: Read, Bash, Write
 | 30%    | 48 chunks         | ~30%      |
 | 50%    | 80 chunks         | ~50%      |
 | 80%    | 128 chunks        | ~80%      |
-| 90%    | 144 chunks        | ~90%      |
 
 ## 使い方
 
 ユーザーから以下のパラメータを確認してください：
 
-1. **レベル**: `baseline`, `30%`, `50%`, `80%`, `90%` のいずれか（複数選択可）
+1. **レベル**: `baseline`, `30%`, `50%`, `80%` のいずれか（複数選択可）
 
 ## 実行手順
 
@@ -54,7 +53,6 @@ allowed-tools: Read, Bash, Write
 | 30%   | chunk_0.txt ~ chunk_47.txt (48個) |
 | 50%   | chunk_0.txt ~ chunk_79.txt (80個) |
 | 80%   | chunk_0.txt ~ chunk_127.txt (128個) |
-| 90%   | chunk_0.txt ~ chunk_143.txt (144個) |
 
 **読み込み方法**: 10個ずつバッチで並列読み込み。全チャンク読み込み後、ユーザーに以下を依頼：
 
@@ -124,7 +122,6 @@ calibration/calibration_baseline.json
 calibration/calibration_30%.json
 calibration/calibration_50%.json
 calibration/calibration_80%.json
-calibration/calibration_90%.json
 ```
 
 存在するファイルをすべて読み込み、以下のマークダウンテーブルを `calibration/README.md` に保存：
@@ -138,7 +135,6 @@ calibration/calibration_90%.json
 | 30% | 48 | 30% | XX% | XXk | 200k | YYYY-MM-DD |
 | 50% | 80 | 50% | XX% | XXk | 200k | YYYY-MM-DD |
 | 80% | 128 | 80% | XX% | XXk | 200k | YYYY-MM-DD |
-| 90% | 144 | 90% | XX% | XXk | 200k | YYYY-MM-DD |
 
 Note: Measured in main CLI window. Agent workers have similar but not identical overhead.
 ```

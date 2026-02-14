@@ -20,7 +20,6 @@ This experiment measures how context consumption affects Claude Code's behavior.
 | 30%   | 48 chunks      | ~30%           |
 | 50%   | 80 chunks      | ~50%           |
 | 80%   | 128 chunks     | ~80%           |
-| 90%   | 144 chunks     | ~90%           |
 
 ## Important Constraints
 

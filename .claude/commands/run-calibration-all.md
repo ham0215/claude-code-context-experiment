@@ -5,7 +5,7 @@ allowed-tools: Read, Bash, Write, Glob
 
 # 全レベル・キャリブレーション（自動再開方式）
 
-全レベル（baseline, 30%, 50%, 80%, 90%）のキャリブレーションを順次実行します。
+全レベル（baseline, 30%, 50%, 80%）のキャリブレーションを順次実行します。
 `/clear` はCLI組み込みコマンドのため自動実行できません。
 代わりに **未測定の最初のレベルを自動検出** して実行します。
 
@@ -25,13 +25,15 @@ allowed-tools: Read, Bash, Write, Glob
 
 ## レベル定義（実行順序）
 
+チャンク数は実測キャリブレーションに基づく逆算値。
+ベースライン実測 27k (14%) + 1チャンクあたり約1,771トークンから算出。
+
 ```
 levels = [
-  { name: "baseline", nominal: 0,  chunks: 0,   file: "calibration_baseline.json" },
-  { name: "30%",      nominal: 30, chunks: 48,  file: "calibration_30%.json" },
-  { name: "50%",      nominal: 50, chunks: 80,  file: "calibration_50%.json" },
-  { name: "80%",      nominal: 80, chunks: 128, file: "calibration_80%.json" },
-  { name: "90%",      nominal: 90, chunks: 144, file: "calibration_90%.json" }
+  { name: "baseline", target: 0,  chunks: 0,  file: "calibration_baseline.json" },
+  { name: "30%",      target: 30, chunks: 19, file: "calibration_30%.json" },
+  { name: "50%",      target: 50, chunks: 41, file: "calibration_50%.json" },
+  { name: "80%",      target: 80, chunks: 75, file: "calibration_80%.json" }
 ]
 ```
 
@@ -59,12 +61,11 @@ Glob: calibration/calibration_*.json
 | Level    | Chunks | Status |
 |----------|--------|--------|
 | baseline | 0      | ✅ 完了 (XX%) |  ← JSON が存在
-| 30%      | 48     | ⬜ 未測定     |  ← 次のターゲット
-| 50%      | 80     | ⬜ 未測定     |
-| 80%      | 128    | ⬜ 未測定     |
-| 90%      | 144    | ⬜ 未測定     |
+| 30%      | 19     | ⬜ 未測定     |  ← 次のターゲット
+| 50%      | 41     | ⬜ 未測定     |
+| 80%      | 75     | ⬜ 未測定     |
 
-次のレベル: **30%**（48 chunks）
+次のレベル: **30%**（19 chunks）
 ```
 
 **全レベル完了の場合**: Step 6（テーブル生成）に直接進む。
@@ -84,10 +85,9 @@ baseline レベル（チャンク 0 個）です。
 
 対象レベルのチャンク数に応じて `noise_chunks/chunk_{i}.txt` を Read ツールで読み込む。
 
-- **30%**: chunk_0.txt ~ chunk_47.txt（48個）
-- **50%**: chunk_0.txt ~ chunk_79.txt（80個）
-- **80%**: chunk_0.txt ~ chunk_127.txt（128個）
-- **90%**: chunk_0.txt ~ chunk_143.txt（144個）
+- **30%**: chunk_0.txt ~ chunk_18.txt（19個）
+- **50%**: chunk_0.txt ~ chunk_40.txt（41個）
+- **80%**: chunk_0.txt ~ chunk_74.txt（75個）
 
 **読み込み方法**: 10個ずつバッチで並列読み込み（Read ツールを10個同時に呼ぶ）。
 
@@ -153,10 +153,9 @@ mkdir -p /Users/naoto.hamada/github/ham/claude-code-context-experiment/calibrati
 | Level    | Chunks | Status |
 |----------|--------|--------|
 | baseline | 0      | ✅ XX% |
-| 30%      | 48     | ✅ XX% |
-| 50%      | 80     | ⬜ 未測定 |  ← 次
-| 80%      | 128    | ⬜ 未測定 |
-| 90%      | 144    | ⬜ 未測定 |
+| 30%      | 19     | ✅ XX% |
+| 50%      | 41     | ⬜ 未測定 |  ← 次
+| 80%      | 75     | ⬜ 未測定 |
 
 ### 次のステップ
 
@@ -168,7 +167,7 @@ mkdir -p /Users/naoto.hamada/github/ham/claude-code-context-experiment/calibrati
 
 ### Step 6: キャリブレーションテーブル生成
 
-全5レベルの JSON を読み込み、`calibration/README.md` にサマリーテーブルを生成：
+全4レベルの JSON を読み込み、`calibration/README.md` にサマリーテーブルを生成：
 
 ```markdown
 # Context Calibration Table
@@ -181,12 +180,11 @@ mkdir -p /Users/naoto.hamada/github/ham/claude-code-context-experiment/calibrati
 | Level | Chunks | Nominal % | Measured % | Used Tokens | Total Tokens | Delta | Date |
 |-------|--------|-----------|------------|-------------|--------------|-------|------|
 | baseline | 0 | 0% | XX.X% | XXk | 200k | +XX.X% | YYYY-MM-DD |
-| 30% | 48 | 30% | XX.X% | XXk | 200k | +XX.X% | YYYY-MM-DD |
-| 50% | 80 | 50% | XX.X% | XXk | 200k | +XX.X% | YYYY-MM-DD |
-| 80% | 128 | 80% | XX.X% | XXk | 200k | +XX.X% | YYYY-MM-DD |
-| 90% | 144 | 90% | XX.X% | XXk | 200k | +XX.X% | YYYY-MM-DD |
+| 30% | 19 | 30% | XX.X% | XXk | 200k | +XX.X% | YYYY-MM-DD |
+| 50% | 41 | 50% | XX.X% | XXk | 200k | +XX.X% | YYYY-MM-DD |
+| 80% | 75 | 80% | XX.X% | XXk | 200k | +XX.X% | YYYY-MM-DD |
 
-Delta = Measured % - Nominal %（固定オーバーヘッドと会話による差分）
+Delta = Measured % - Target %（ターゲットとの差分）
 
 ## Notes
 

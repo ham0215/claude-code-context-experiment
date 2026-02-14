@@ -35,12 +35,10 @@ class ExperimentRunner:
         # Target: 30% = 60K tokens = 48 chunks
         #         50% = 100K tokens = 80 chunks
         #         80% = 160K tokens = 128 chunks
-        #         90% = 180K tokens = 144 chunks
         self.context_levels = {
             "30%": {"chunks": 48, "target_percent": 30},
             "50%": {"chunks": 80, "target_percent": 50},
             "80%": {"chunks": 128, "target_percent": 80},
-            "90%": {"chunks": 144, "target_percent": 90},
         }
         self.trials_per_level = 100
 
@@ -557,7 +555,7 @@ def run_single(context_level: str, trial_num: int) -> dict:
     """Run a single trial (for parallel execution via subagents).
 
     Args:
-        context_level: One of "30%", "50%", "80%", "90%"
+        context_level: One of "30%", "50%", "80%"
         trial_num: Trial number (1-100)
 
     Returns:
@@ -593,7 +591,7 @@ def main():
 
     parser = argparse.ArgumentParser(description="Context Consumption Experiment Runner")
     parser.add_argument("--single", action="store_true", help="Run a single trial")
-    parser.add_argument("--level", type=str, help="Context level (30%%, 50%%, 80%%, 90%%)")
+    parser.add_argument("--level", type=str, help="Context level (30%%, 50%%, 80%%)")
     parser.add_argument("--trial", type=int, help="Trial number (1-100)")
     parser.add_argument("--batch", action="store_true", help="Run a batch of trials")
     parser.add_argument("--batch-start", type=int, default=1, help="Start trial number for batch")
