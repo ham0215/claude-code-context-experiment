@@ -45,29 +45,69 @@ TeamCreate(team_name="exp-{level}pct", description="Context experiment at {level
 
 例: `TeamCreate(team_name="exp-30pct", description="Context experiment at 30% level")`
 
-### Step 1.5: 過去の結果をバックアップ
+### Step 1.5: 過去データの処理
 
-既存の `results/` や `workspaces/` が存在する場合、新しい実験結果と混ざらないようにタイムスタンプ付きでバックアップします。
+既存の `results/` や `workspaces/` にファイルが存在する場合、AskUserQuestion でユーザーに処理方法を確認します。
+既存データがない場合はこのステップをスキップしてください。
 
-```bash
-# results/ が存在し、中にファイルがある場合のみバックアップ
-if [ -d results ] && [ "$(ls -A results 2>/dev/null)" ]; then
-  backup_dir="results_backup_$(date +%Y%m%d_%H%M%S)"
-  mv results "$backup_dir"
-  echo "Backed up results/ -> $backup_dir"
-fi
-mkdir -p results
+#### 確認方法
 
-# workspaces/ が存在し、中にファイルがある場合のみバックアップ
-if [ -d workspaces ] && [ "$(ls -A workspaces 2>/dev/null)" ]; then
-  backup_dir="workspaces_backup_$(date +%Y%m%d_%H%M%S)"
-  mv workspaces "$backup_dir"
-  echo "Backed up workspaces/ -> $backup_dir"
-fi
-mkdir -p workspaces
+```
+AskUserQuestion:
+  question: "過去の実験データが存在します。どのように処理しますか？"
+  header: "Past data"
+  options:
+    - label: "バックアップ"
+      description: "results/_backup_YYYYMMDD_HHMMSS/ に退避してから実行"
+    - label: "削除"
+      description: "過去データを削除してクリーンな状態で実行"
+    - label: "スキップ"
+      description: "過去データをそのまま残して実行（結果が混在する可能性あり）"
 ```
 
-**注意**: バックアップ実行前にユーザーに確認すること。過去の結果が不要な場合はスキップ可。
+#### 「バックアップ」選択時
+
+バックアップ先は `results/` および `workspaces/` 配下にすることで、`.gitignore` により自動的にgit管理外となります。
+
+```bash
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+
+# results/ 内の既存ファイルをバックアップ（_backup_ ディレクトリ自体は除外）
+mkdir -p "results/_backup_${TIMESTAMP}"
+find results -maxdepth 1 -type f -exec mv {} "results/_backup_${TIMESTAMP}/" \;
+echo "Backed up results files -> results/_backup_${TIMESTAMP}/"
+
+# workspaces/ 内の既存ディレクトリをバックアップ
+if [ -d workspaces ] && [ "$(ls -A workspaces 2>/dev/null)" ]; then
+  mkdir -p "workspaces/_backup_${TIMESTAMP}"
+  find workspaces -maxdepth 1 -mindepth 1 -not -name '_backup_*' -exec mv {} "workspaces/_backup_${TIMESTAMP}/" \;
+  echo "Backed up workspaces -> workspaces/_backup_${TIMESTAMP}/"
+fi
+```
+
+#### 「削除」選択時
+
+```bash
+# results/ 内の既存ファイルを削除（_backup_ ディレクトリは保持）
+find results -maxdepth 1 -type f -delete
+echo "Deleted result files"
+
+# workspaces/ 内の既存ディレクトリを削除（_backup_ ディレクトリは保持）
+if [ -d workspaces ]; then
+  find workspaces -maxdepth 1 -mindepth 1 -not -name '_backup_*' -exec rm -rf {} \;
+  echo "Deleted workspace directories"
+fi
+```
+
+#### 「スキップ」選択時
+
+何もしない。`mkdir -p results workspaces` のみ実行。
+
+#### 共通（全選択肢の後に実行）
+
+```bash
+mkdir -p results workspaces
+```
 
 ### Step 2: タスク登録 & 事前割り当て
 
