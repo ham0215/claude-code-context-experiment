@@ -60,20 +60,14 @@ Read the specified number of noise chunks using the Read tool:
 
 Read chunks in batches of 10-20 for efficiency. After reading all chunks, acknowledge that you have consumed the context.
 
-#### Step 2: Record Context Usage with /context Command
+#### Step 2: Record Start Time
 
-After reading all noise chunks, execute `/context` to measure current context consumption.
+Record the start time **after** noise chunks are loaded. This ensures `elapsed_seconds` measures only the FizzBuzz task, not chunk I/O overhead.
 
-The output format looks like:
+```bash
+date +%s
 ```
-Context: XX.X% used (XXXK / XXXK tokens)
-```
-
-Record:
-- `context_used_tokens`: tokens used (e.g., 125000)
-- `context_total_tokens`: total available tokens (e.g., 200000)
-- `context_percent`: percentage used (e.g., 62.5)
-- `context_raw_output`: the raw output string
+Store this value as `start_epoch` (you will need it in Step 6 to compute elapsed time).
 
 #### Step 3: Read the Specification
 
@@ -144,9 +138,15 @@ print(json.dumps({'secrets': secrets, 'funcs': funcs, 'hidden': hidden}))
 
 Parse the JSON output to extract all validation fields for use in Step 7.
 
-#### Step 7: Record Results
+#### Step 7: Record End Time & Save Results
 
-Save the trial result as JSON:
+First, record the end time and compute elapsed seconds:
+```bash
+date +%s
+```
+Compute: `elapsed_seconds = end_epoch - start_epoch` (where `start_epoch` was recorded in Step 2).
+
+Then save the trial result as JSON:
 ```
 {project_root}/{result_file}
 ```
@@ -161,15 +161,8 @@ The JSON **MUST** contain ALL of the following fields. Missing fields will cause
   "timestamp": "2025-01-01T12:00:00",
   "workspace_path": "workspaces/trial_30%_001/",
 
-  "context_used_tokens": null,
-  "context_total_tokens": null,
-  "context_percent": null,
-  "context_raw_output": "",
-
   "target_context_percent": 30,
-  "actual_context_percent": null,
-
-  "elapsed_seconds": 0,
+  "elapsed_seconds": 123,
 
   "test_passed": true,
   "tests_passed": 65,
@@ -225,8 +218,7 @@ The JSON **MUST** contain ALL of the following fields. Missing fields will cause
 
 **Field notes:**
 - `target_context_percent`: Extract the numeric value from `context_level` (e.g., "30%" → 30)
-- `actual_context_percent`: Same as `context_percent` if available, otherwise null
-- `elapsed_seconds`: Set to 0 (timing is not tracked per worker)
+- `elapsed_seconds`: `end_epoch - start_epoch` (computed from Step 2 and Step 7)
 - `timestamp`: Use ISO 8601 format (e.g., "2025-01-01T12:00:00")
 
 ### Phase 3: Report and Stop

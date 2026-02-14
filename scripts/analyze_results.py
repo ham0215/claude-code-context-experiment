@@ -56,14 +56,12 @@ class ResultsAnalyzer:
             ) if n > 1 else 0
 
             # Response time statistics
-            times = [t["elapsed_seconds"] for t in trials]
+            times = [t.get("elapsed_seconds") or 0 for t in trials]
             time_mean = sum(times) / n
 
             # Context consumption statistics
-            target_percents = [t.get("target_context_percent", 0) for t in trials]
-            actual_percents = [t.get("actual_context_percent", 0) for t in trials]
+            target_percents = [t.get("target_context_percent") or 0 for t in trials]
             target_mean = sum(target_percents) / n if target_percents else 0
-            actual_mean = sum(actual_percents) / n if actual_percents else 0
 
             # Function-level success rates
             func_rates = {}
@@ -96,7 +94,6 @@ class ResultsAnalyzer:
             summary[level] = {
                 "count": n,
                 "target_context_percent": round(target_mean, 1),
-                "actual_context_percent": round(actual_mean, 1),
                 "test_success_rate": round(test_rate, 4),
                 "test_passed": test_passed,
                 "secret_score_mean": round(secret_mean, 4),
@@ -177,15 +174,15 @@ class ResultsAnalyzer:
         ]
 
         # Table header
-        lines.append(f"{'Level':<8} {'N':>4} {'Target':>8} {'Actual':>8} {'Pass Rate':>10} {'Secret':>8} {'Hidden':>8} {'Time':>8}")
-        lines.append("-" * 78)
+        lines.append(f"{'Level':<8} {'N':>4} {'Target':>8} {'Pass Rate':>10} {'Secret':>8} {'Hidden':>8} {'Time':>8}")
+        lines.append("-" * 70)
 
         for level in sorted(summary.keys()):
             s = summary[level]
             hidden_mean = s.get('hidden_score_mean', 0)
             lines.append(
                 f"{level:<8} {s['count']:>4} "
-                f"{s['target_context_percent']:>7.1f}% {s['actual_context_percent']:>7.1f}% "
+                f"{s['target_context_percent']:>7.1f}% "
                 f"{s['test_success_rate']:>9.1%} {s['secret_score_mean']:>8.2f} "
                 f"{hidden_mean:>8.2f} {s['response_time_mean']:>7.1f}s"
             )
