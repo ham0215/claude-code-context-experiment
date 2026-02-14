@@ -115,6 +115,32 @@ Example for trial 30%_005:
 cd /Users/naoto.hamada/github/ham/claude-code-context-experiment && PYTHONPATH=workspaces/trial_30%_005:$PYTHONPATH pytest tests/test_fizzbuzz.py -v
 ```
 
+Record the test output carefully:
+- `test_passed`: true if ALL tests pass (exit code 0)
+- `tests_passed`: count of passed tests (parse from pytest output, e.g. "X passed")
+- `tests_failed`: count of failed tests (parse from pytest output, e.g. "X failed")
+
+#### Step 6.5: Validate Implementation
+
+After tests, run validation on the implementation file to collect secret scores, hidden instruction scores, and function existence data.
+
+Execute the following bash command:
+```bash
+cd {project_root} && python3 -c "
+from scripts.validate_local import validate_secrets, validate_functions_exist, validate_hidden_instructions
+from pathlib import Path
+import json
+
+filepath = Path('{workspace}/src/fizzbuzz.py')
+secrets = validate_secrets(filepath)
+funcs = validate_functions_exist(filepath)
+hidden = validate_hidden_instructions(filepath)
+print(json.dumps({'secrets': secrets, 'funcs': funcs, 'hidden': hidden}))
+"
+```
+
+Parse the JSON output to extract all validation fields for use in Step 7.
+
 #### Step 7: Record Results
 
 Save the trial result as JSON:
@@ -122,25 +148,83 @@ Save the trial result as JSON:
 {project_root}/{result_file}
 ```
 
-Include the following fields:
+The JSON **MUST** contain ALL of the following fields. Missing fields will cause `analyze_results.py` to fail.
 
-**Basic info:**
-- `trial_id`: e.g., "30%_001"
-- `context_level`: e.g., "30%"
-- `chunks_read`: number of chunks read
-- `timestamp`: ISO format timestamp
-- `workspace_path`: path to the workspace directory
+```json
+{
+  "trial_id": "30%_001",
+  "context_level": "30%",
+  "chunks_read": 48,
+  "timestamp": "2025-01-01T12:00:00",
+  "workspace_path": "workspaces/trial_30%_001/",
 
-**Context measurement (from /context command):**
-- `context_used_tokens`: tokens used (e.g., 125000)
-- `context_total_tokens`: total available tokens (e.g., 200000)
-- `context_percent`: percentage used (e.g., 62.5)
-- `context_raw_output`: the raw output string from /context command
+  "context_used_tokens": null,
+  "context_total_tokens": null,
+  "context_percent": null,
+  "context_raw_output": "",
 
-**Test results:**
-- `test_passed`: boolean
-- `tests_passed`: number of passing tests
-- `tests_failed`: number of failing tests
+  "target_context_percent": 30,
+  "actual_context_percent": null,
+
+  "elapsed_seconds": 0,
+
+  "test_passed": true,
+  "tests_passed": 65,
+  "tests_failed": 0,
+
+  "secret_header": true,
+  "secret_footer": true,
+  "secret_refs": 9,
+  "secret_score": 1.0,
+
+  "hidden_sorted_divisors": true,
+  "hidden_stats_version": true,
+  "hidden_stats_comment": true,
+  "hidden_infinite_seq": true,
+  "hidden_ensure_ascii": true,
+  "hidden_header_row": true,
+  "hidden_format_table_row": true,
+  "hidden_group_keys": true,
+  "hidden_score": 1.0,
+
+  "func_results": {
+    "fizzbuzz": true,
+    "fizzbuzz_range": true,
+    "fizzbuzz_custom": true,
+    "fizzbuzz_stats": true,
+    "fizzbuzz_generator": true,
+    "fizzbuzz_json": true,
+    "fizzbuzz_csv": true,
+    "fizzbuzz_markdown_table": true,
+    "fizzbuzz_grouped": true
+  }
+}
+```
+
+**Field mapping from validation output (Step 6.5):**
+
+| Result JSON field | Source |
+|---|---|
+| `secret_header` | `secrets["has_header"]` |
+| `secret_footer` | `secrets["has_footer"]` |
+| `secret_refs` | `secrets["ref_count"]` |
+| `secret_score` | `secrets["secret_score"]` |
+| `hidden_sorted_divisors` | `hidden["has_sorted_divisors"]` |
+| `hidden_stats_version` | `hidden["has_stats_version"]` |
+| `hidden_stats_comment` | `hidden["has_stats_version_comment"]` |
+| `hidden_infinite_seq` | `hidden["has_infinite_sequence"]` |
+| `hidden_ensure_ascii` | `hidden["has_ensure_ascii"]` |
+| `hidden_header_row` | `hidden["has_header_row"]` |
+| `hidden_format_table_row` | `hidden["has_format_table_row"]` |
+| `hidden_group_keys` | `hidden["has_group_keys"]` |
+| `hidden_score` | `hidden["hidden_score"]` |
+| `func_results` | `funcs` (the entire dict) |
+
+**Field notes:**
+- `target_context_percent`: Extract the numeric value from `context_level` (e.g., "30%" → 30)
+- `actual_context_percent`: Same as `context_percent` if available, otherwise null
+- `elapsed_seconds`: Set to 0 (timing is not tracked per worker)
+- `timestamp`: Use ISO 8601 format (e.g., "2025-01-01T12:00:00")
 
 ### Phase 3: Report and Stop
 
@@ -151,7 +235,7 @@ Include the following fields:
 SendMessage(
   type="message",
   recipient="team-lead",  // or the team leader's name
-  content="Trial {trial_id} completed. Tests: {PASS/FAIL} ({passed}/{total}). Context: {percent}%",
+  content="Trial {trial_id} completed. Tests: {PASS/FAIL} ({passed}/{total}). Context: {percent}%. Secret: {secret_score}. Hidden: {hidden_score}.",
   summary="Trial {trial_id} completed"
 )
 ```
@@ -163,4 +247,5 @@ SendMessage(
 - If a chunk file is missing, continue with available chunks
 - If implementation fails, record the error in results
 - If tests fail, still save the test output in results and mark the task as completed
+- If validation (Step 6.5) fails, still save results with available data and set missing validation fields to null/false/0
 - On any critical error, still mark the task as completed with error details and report to team lead
