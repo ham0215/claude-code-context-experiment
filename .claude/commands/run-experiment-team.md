@@ -45,6 +45,30 @@ TeamCreate(team_name="exp-{level}pct", description="Context experiment at {level
 
 例: `TeamCreate(team_name="exp-30pct", description="Context experiment at 30% level")`
 
+### Step 1.5: 過去の結果をバックアップ
+
+既存の `results/` や `workspaces/` が存在する場合、新しい実験結果と混ざらないようにタイムスタンプ付きでバックアップします。
+
+```bash
+# results/ が存在し、中にファイルがある場合のみバックアップ
+if [ -d results ] && [ "$(ls -A results 2>/dev/null)" ]; then
+  backup_dir="results_backup_$(date +%Y%m%d_%H%M%S)"
+  mv results "$backup_dir"
+  echo "Backed up results/ -> $backup_dir"
+fi
+mkdir -p results
+
+# workspaces/ が存在し、中にファイルがある場合のみバックアップ
+if [ -d workspaces ] && [ "$(ls -A workspaces 2>/dev/null)" ]; then
+  backup_dir="workspaces_backup_$(date +%Y%m%d_%H%M%S)"
+  mv workspaces "$backup_dir"
+  echo "Backed up workspaces/ -> $backup_dir"
+fi
+mkdir -p workspaces
+```
+
+**注意**: バックアップ実行前にユーザーに確認すること。過去の結果が不要な場合はスキップ可。
+
 ### Step 2: タスク登録 & 事前割り当て
 
 各トライアルを TaskCreate でタスク登録し、**直後に TaskUpdate で対応するワーカーに割り当て**ます。
