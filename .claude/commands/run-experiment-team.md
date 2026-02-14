@@ -171,6 +171,7 @@ Task(
   subagent_type="experiment-team-worker",
   team_name="exp-{level}pct",
   name="worker-1",
+  mode="dontAsk",
   prompt="You are worker-1 in team exp-{level}pct. Your assigned task is 'Trial {level}_{001}'. Find it in TaskList by subject, set status to in_progress, and execute the trial. Do NOT claim any other task. Project root: /Users/naoto.hamada/github/ham/claude-code-context-experiment",
   description="Experiment worker 1"
 )
@@ -179,6 +180,7 @@ Task(
   subagent_type="experiment-team-worker",
   team_name="exp-{level}pct",
   name="worker-2",
+  mode="dontAsk",
   prompt="You are worker-2 in team exp-{level}pct. Your assigned task is 'Trial {level}_{002}'. Find it in TaskList by subject, set status to in_progress, and execute the trial. Do NOT claim any other task. Project root: /Users/naoto.hamada/github/ham/claude-code-context-experiment",
   description="Experiment worker 2"
 )
