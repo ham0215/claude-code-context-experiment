@@ -5,6 +5,7 @@
       "Bash(mkdir -p:*)",
       "Bash(pytest:*)",
       "Bash(cd:*)",
+      "Bash(ls:*)",
       "Bash(PYTHONPATH=:*)",
       "Bash(PYTHONPATH=workspaces/:*)",
       "Bash(cd * && PYTHONPATH=:*)",
