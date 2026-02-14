@@ -174,6 +174,64 @@ class ResultsAnalyzer:
             "level2": {"total": n2, "passed": pass2, "rate": round(pass2/n2, 4)}
         }
 
+    def welch_t_test(self, level1: str, level2: str) -> Optional[dict]:
+        """Welch's t-test comparing elapsed_seconds between two levels.
+
+        Uses only the standard library (no scipy dependency).
+        """
+        grouped = self.group_by_level()
+        if level1 not in grouped or level2 not in grouped:
+            return None
+
+        times1 = [t.get("elapsed_seconds") or 0 for t in grouped[level1]]
+        times2 = [t.get("elapsed_seconds") or 0 for t in grouped[level2]]
+
+        n1, n2 = len(times1), len(times2)
+        if n1 < 2 or n2 < 2:
+            return None
+
+        m1 = sum(times1) / n1
+        m2 = sum(times2) / n2
+        var1 = sum((x - m1) ** 2 for x in times1) / (n1 - 1)
+        var2 = sum((x - m2) ** 2 for x in times2) / (n2 - 1)
+
+        se = math.sqrt(var1 / n1 + var2 / n2)
+        if se == 0:
+            return None
+
+        t_stat = (m1 - m2) / se
+
+        # Welch-Satterthwaite degrees of freedom
+        num = (var1 / n1 + var2 / n2) ** 2
+        den = (var1 / n1) ** 2 / (n1 - 1) + (var2 / n2) ** 2 / (n2 - 1)
+        df = num / den if den > 0 else n1 + n2 - 2
+
+        # Cohen's d (pooled SD)
+        pooled_sd = math.sqrt((var1 + var2) / 2)
+        cohens_d = abs(m2 - m1) / pooled_sd if pooled_sd > 0 else 0
+
+        # Approximate two-tailed p-value via normal CDF (good for df > 10)
+        z = abs(t_stat)
+        p_approx = math.erfc(z / math.sqrt(2))
+
+        return {
+            "level1": level1,
+            "level2": level2,
+            "mean1": round(m1, 1),
+            "mean2": round(m2, 1),
+            "std1": round(math.sqrt(var1), 1),
+            "std2": round(math.sqrt(var2), 1),
+            "n1": n1,
+            "n2": n2,
+            "diff": round(m2 - m1, 1),
+            "diff_pct": round((m2 - m1) / m1 * 100, 1) if m1 > 0 else None,
+            "t_stat": round(t_stat, 3),
+            "df": round(df, 1),
+            "p_approx": round(p_approx, 6),
+            "cohens_d": round(cohens_d, 2),
+            "significant": p_approx < 0.05,
+        }
+
     def generate_report(self) -> str:
         """Generate a text report of the analysis."""
         summary = self.calculate_summary()
@@ -235,18 +293,43 @@ class ResultsAnalyzer:
                 lines.append(f"  {label:<28} {bar} {rate:.1%}")
             lines.append("")
 
-        # Chi-square tests
+        # Statistical tests
         lines.extend(["【統計的検定】", ""])
 
-        test_30_80 = self.chi_square_test("30%", "80%")
-        if test_30_80:
-            lines.append("30% vs 80% 比較:")
-            lines.append(f"  χ² = {test_30_80['chi_square']:.4f}")
-            lines.append(f"  結果: {test_30_80['significance']} (α = 0.05)")
-            lines.append(f"  30% 成功率: {test_30_80['level1']['rate']:.1%}")
-            lines.append(f"  80% 成功率: {test_30_80['level2']['rate']:.1%}")
+        levels = sorted(summary.keys())
 
-        lines.append("")
+        # Pairwise comparisons for all available level pairs
+        for i in range(len(levels)):
+            for j in range(i + 1, len(levels)):
+                l1, l2 = levels[i], levels[j]
+
+                lines.append(f"{l1} vs {l2} 比較:")
+
+                # Chi-square test (pass rate)
+                chi_result = self.chi_square_test(l1, l2)
+                if chi_result:
+                    lines.append(f"  テスト成功率: {l1}={chi_result['level1']['rate']:.1%}, "
+                                 f"{l2}={chi_result['level2']['rate']:.1%}")
+                    lines.append(f"  χ² = {chi_result['chi_square']:.4f}, "
+                                 f"{chi_result['significance']} (α = 0.05)")
+                else:
+                    lines.append("  テスト成功率: 差なし（全試行パス）")
+
+                # Welch's t-test (elapsed time)
+                t_result = self.welch_t_test(l1, l2)
+                if t_result:
+                    lines.append(f"  実行時間: {l1}={t_result['mean1']:.1f}s (SD={t_result['std1']:.1f}), "
+                                 f"{l2}={t_result['mean2']:.1f}s (SD={t_result['std2']:.1f})")
+                    diff_sign = "+" if t_result['diff'] >= 0 else ""
+                    diff_pct_str = f" ({diff_sign}{t_result['diff_pct']:.1f}%)" if t_result['diff_pct'] is not None else ""
+                    lines.append(f"  差分: {diff_sign}{t_result['diff']:.1f}s{diff_pct_str}")
+                    sig_label = "有意" if t_result['significant'] else "有意でない"
+                    lines.append(f"  Welch's t={t_result['t_stat']:.3f}, df={t_result['df']:.1f}, "
+                                 f"p≈{t_result['p_approx']:.4f} → {sig_label}")
+                    lines.append(f"  Cohen's d={t_result['cohens_d']:.2f}")
+
+                lines.append("")
+
         lines.append("=" * 70)
 
         return "\n".join(lines)
