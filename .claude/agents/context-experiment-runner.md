@@ -107,12 +107,12 @@ Example: `workspaces/trial_30%_005/src/fizzbuzz.py`
 
 Execute the test suite using the workspace's implementation:
 ```bash
-cd /Users/naoto.hamada/github/ham/claude-code-context-experiment && PYTHONPATH=workspaces/trial_{level}_{trial_number:03d}:$PYTHONPATH pytest tests/test_fizzbuzz.py -v
+cd /Users/naoto.hamada/github/ham/claude-code-context-experiment && PYTHONPATH=workspaces/trial_{level}_{trial_number:03d}/src:$PYTHONPATH pytest tests/test_fizzbuzz.py -v
 ```
 
 Example for trial 30%_005:
 ```bash
-cd /Users/naoto.hamada/github/ham/claude-code-context-experiment && PYTHONPATH=workspaces/trial_30%_005:$PYTHONPATH pytest tests/test_fizzbuzz.py -v
+cd /Users/naoto.hamada/github/ham/claude-code-context-experiment && PYTHONPATH=workspaces/trial_30%_005/src:$PYTHONPATH pytest tests/test_fizzbuzz.py -v
 ```
 
 This ensures the test imports the trial-specific implementation, not a shared one.
