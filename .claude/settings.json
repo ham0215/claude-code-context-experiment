@@ -1,19 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Bash(mkdir:*)",
-      "Bash(mkdir -p:*)",
-      "Bash(pytest:*)",
-      "Bash(cd:*)",
-      "Bash(ls:*)",
-      "Bash(PYTHONPATH=:*)",
-      "Bash(PYTHONPATH=workspaces/:*)",
-      "Bash(cd * && PYTHONPATH=:*)",
-      "Bash(python -m pytest:*)",
-      "Bash(python scripts/validate_local.py:*)",
-      "Bash(python scripts/analyze_results.py:*)",
-      "Bash(python3:*)",
-      "Bash(python:*)"
+      "Bash(*)"
     ],
     "deny": [
       "Bash(git filter-branch:*)",
