@@ -1,0 +1,12 @@
+{
+  "level": "baseline",
+  "nominal_percent": 0,
+  "chunks_read": 0,
+  "measured_used_tokens": 27000,
+  "measured_total_tokens": 200000,
+  "measured_percent": 14,
+  "messages_tokens": 3300,
+  "free_tokens": 138000,
+  "timestamp": "2026-02-14T00:00:00+09:00",
+  "note": "Measured in main CLI window with /context command"
+}
