@@ -66,26 +66,31 @@ Claude Codeにおけるコンテキストウィンドウの消費量が、以下
 
 ```
 claude-code-context-experiment/
-├── src/
-│   └── fizzbuzz.py                   # 実装対象（毎回削除、.gitignoreで除外）
 ├── docs/
 │   └── fizzbuzz_spec.md              # 設計書（9関数+隠し指示）
 ├── tests/
 │   └── test_fizzbuzz.py              # テストコード
 ├── scripts/
-│   ├── experiment_runner.py          # 実験ランナー（単一/バッチ/並列対応）
 │   ├── analyze_results.py            # 結果分析
 │   ├── validate_local.py             # 検証ロジック
-│   └── generate_noise_chunks.py      # ノイズチャンク生成
-├── noise_chunks/                     # コンテキスト消費用ノイズファイル（200個）
+│   ├── generate_noise_chunks.py      # ノイズチャンク生成
+│   └── generate_context_claudemd.py  # CLAUDE.md バリアント生成
+├── noise_chunks/                     # コンテキスト消費用ノイズファイル
+├── claude_md_variants/               # レベル別 CLAUDE.md バリアント
+│   ├── CLAUDE.md.original            # オリジナル（ノイズなし）
+│   ├── CLAUDE.md.30pct               # 30% コンテキスト消費用
+│   ├── CLAUDE.md.50pct               # 50% コンテキスト消費用
+│   └── CLAUDE.md.80pct               # 80% コンテキスト消費用
 ├── prompts/
 │   └── implementation_prompt.txt     # 実装依頼プロンプト
 ├── .claude/
 │   ├── agents/
-│   │   └── context-experiment-runner.md  # 並列実行用サブエージェント
+│   │   ├── experiment-team-worker.md # チームワーカーエージェント
+│   │   └── commit-creator.md         # コミット作成エージェント
 │   └── commands/
-│       └── run-experiment-parallel.md    # 並列実行スキル
-├── workspaces/                       # 試行別ワークスペース（並列実行時、.gitignoreで除外）
+│       └── run-experiment-team.md    # チームベース実験実行スキル
+├── CLAUDE.md                         # 実験時はバリアントに切り替え
+├── workspaces/                       # 試行別ワークスペース（.gitignoreで除外）
 │   └── trial_{level}_{number}/
 │       └── src/fizzbuzz.py
 └── results/                          # 結果保存（.gitignoreで除外）
@@ -95,26 +100,27 @@ claude-code-context-experiment/
 
 ## 実験手法
 
-### 単一プロンプト方式
+### コンテキスト注入方式
 
-コンテキスト消費をシミュレートするため、ノイズコンテンツを直接プロンプトに含める方式を採用。
-
-```
-[ノイズチャンク1]
-[ノイズチャンク2]
-...
-[ノイズチャンクN]
-
-docs/fizzbuzz_spec.md を読んで、src/fizzbuzz.py を実装してください。
-```
+ルートの `CLAUDE.md` をレベル別のバリアントに切り替えることで、ワーカー起動時に自動的にコンテキストが消費される。ワーカー側でのチャンク読み込みは不要。
 
 ### コンテキストレベル
 
-| 条件名 | チャンク数 | 目標消費率 |
-|--------|-----------|-----------|
-| 30% | 48 | ~30% |
-| 50% | 80 | ~50% |
-| 80% | 128 | ~80% |
+| レベル | CLAUDE.md バリアント | 目標消費率 |
+|--------|---------------------|-----------|
+| 30%    | `claude_md_variants/CLAUDE.md.30pct` | ~30% |
+| 50%    | `claude_md_variants/CLAUDE.md.50pct` | ~50% |
+| 80%    | `claude_md_variants/CLAUDE.md.80pct` | ~80% |
+
+### 実行アーキテクチャ
+
+Claude Code のチーム機能（TeamCreate / TaskCreate / SendMessage）を使用：
+
+1. チームリーダーが CLAUDE.md を切り替え、`/context` でコンテキスト消費量を検証
+2. タスクを事前登録し、各ワーカーに1対1で割り当て
+3. ワーカーを並列起動（1トライアル1ワーカー）
+4. 各ワーカーが独立したコンテキストで FizzBuzz 実装タスクを実行
+5. 結果を `results/trial_*.json` に個別保存
 
 ---
 
@@ -128,40 +134,31 @@ pip install -r requirements.txt
 
 # ノイズチャンクの生成（初回のみ）
 python scripts/generate_noise_chunks.py
+
+# CLAUDE.md バリアントの生成（初回のみ）
+python scripts/generate_context_claudemd.py --all
 ```
 
 ### 実験実行
 
-#### 方法1: 並列実行（推奨）
+Claude Code で以下のスキルを実行：
 
-Claude Codeのサブエージェント機能を使用して、独立したコンテキストで並列実行。
-
-```bash
-# Claude Codeでスキルを実行
-/run-experiment-parallel
+```
+/run-experiment-team
 ```
 
-各サブエージェントが独立したコンテキストを持つため、実験の目的（コンテキスト消費の影響検証）に最適。
+パラメータの入力を求められるので、以下を指定：
 
-**並列実行の仕組み:**
-- `context-experiment-runner` エージェントを複数同時起動
-- **1試行1エージェント（MUST）**: コンテキスト分離を保証するため、各エージェントは1試行のみ実行
-- **ワークスペース分離**: 各試行は `workspaces/trial_{level}_{number}/` に実装を生成（ファイル競合防止）
-- **コンテキスト測定**: `/context` コマンドで実際の消費量を記録
-- 結果は `results/trial_*.json` に個別保存
+1. **コンテキストレベル**: `30%`, `50%`, `80%` のいずれか
+2. **試行範囲**: 開始番号と終了番号（例: 1-5）
+3. **ワーカー数**: 同時起動するワーカー数（推奨: 試行数と同数）
 
-#### 方法2: 単一試行/バッチ実行
+**実行フロー:**
 
-```bash
-# 単一試行（例: 30%レベル、試行1）
-python scripts/experiment_runner.py --single --level "30%" --trial 1
-
-# バッチ実行（例: 30%レベル、試行1-10）
-python scripts/experiment_runner.py --batch --level "30%" --batch-start 1 --batch-end 10
-
-# 対話型フル実行（直列、400試行）
-python scripts/experiment_runner.py
-```
+1. CLAUDE.md を対象レベルのバリアントに切り替え確認
+2. `/context` でコンテキスト消費量を検証（許容範囲外なら中断）
+3. チーム作成 → タスク登録 → ワーカー並列起動
+4. 全ワーカー完了後、クリーンアップ → 結果集計
 
 ### 結果分析
 
@@ -185,18 +182,9 @@ python scripts/analyze_results.py
 ### 4. 関数別成功率
 - 9つの関数それぞれの実装成否
 
-### 5. コンテキスト測定（/context コマンド）
-- `context_used_tokens`: 使用トークン数
-- `context_total_tokens`: 総トークン数
-- `context_percent`: 消費率（%）
-- `context_raw_output`: `/context` コマンドの生出力
-
-### 6. 詳細エラー情報
-- `cli_returncode`: CLIの終了コード
-- `cli_stderr`: 標準エラー出力
-- `cli_stdout_preview`: 標準出力のプレビュー
-- `use_incremental`: 段階的アプローチ使用フラグ
-- `session_id`: CLIセッションID
+### 5. コンテキスト測定
+- `measured_context_percent`: チームリーダーが `/context` で測定した消費率
+- `target_context_percent`: 目標コンテキスト消費率
 
 ---
 
@@ -227,10 +215,10 @@ Level       N   Target   Actual  Pass Rate   Secret   Hidden     Time
 
 ## 制限事項
 
-- コンテキスト消費量の正確な制御は困難（±2%の誤差を許容）
+- コンテキスト消費量の正確な制御は困難（±数%の誤差を許容）
 - Claude Code のバージョンアップにより結果が変わる可能性
 - 応答時間にはClaudeの入力トークン処理時間を含む
-- **CLI制限**: 80%超のコンテキスト消費はautocompactにより正確な測定が困難
+- 80%超のコンテキスト消費はautocompactにより正確な測定が困難
 
 ---
 
@@ -238,6 +226,7 @@ Level       N   Target   Actual  Pass Rate   Secret   Hidden     Time
 
 | 日付 | バージョン | 変更内容 |
 |------|------------|----------|
+| 2026-02-14 | 4.0 | CLAUDE.md バリアント方式に移行、チームベース実行に一本化 |
 | 2026-02-01 | 3.1 | ワークスペース分離、/context測定、1試行1エージェント必須化 |
 | 2025-02-01 | 3.0 | サブエージェントによる並列実行サポート追加、CLI引数対応 |
 | 2024-12-31 | 2.1 | 段階的アプローチ実装、詳細エラー記録追加 |
