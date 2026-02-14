@@ -5,14 +5,14 @@ allowed-tools: TeamCreate, TeamDelete, TaskCreate, TaskList, TaskGet, TaskUpdate
 
 # チームベース実験実行
 
-TeamCreate/TaskCreate/SendMessage を使用して、共有タスクリストでワーカーが自己組織的にトライアルを実行します。
+TeamCreate/TaskCreate/SendMessage を使用して、タスクを事前割り当てしたワーカーが並列にトライアルを実行します。
 
 ## 既存方式との比較
 
 | 機能 | `/run-experiment-parallel`（既存） | `/run-experiment-team`（本コマンド） |
 |------|-----------------------------------|--------------------------------------|
 | エージェント管理 | Task で個別起動 | TeamCreate でチーム化 |
-| タスク管理 | プロンプトで指示 | 共有タスクリストで自己割り当て |
+| タスク管理 | プロンプトで指示 | タスク事前割り当て（競合なし） |
 | 進捗監視 | 各エージェントの完了待ち | TaskList でリアルタイム確認 |
 | 障害対応 | エージェント単位で再起動 | 未完了タスクを別ワーカーが自動引き継ぎ |
 | クリーンアップ | なし | TeamDelete で一括削除 |
@@ -45,9 +45,12 @@ TeamCreate(team_name="exp-{level}pct", description="Context experiment at {level
 
 例: `TeamCreate(team_name="exp-30pct", description="Context experiment at 30% level")`
 
-### Step 2: タスク登録
+### Step 2: タスク登録 & 事前割り当て
 
-各トライアルを TaskCreate でタスク登録。以下のフォーマットを使用：
+各トライアルを TaskCreate でタスク登録し、**直後に TaskUpdate で対応するワーカーに割り当て**ます。
+これにより、ワーカー間のタスク競合（レースコンディション）を完全に排除します。
+
+#### 2a: タスク作成
 
 ```
 TaskCreate:
@@ -64,26 +67,47 @@ TaskCreate:
   activeForm: "Executing trial {level}_{number:03d}"
 ```
 
+#### 2b: ワーカーへの事前割り当て
+
+タスク作成後、各タスクを対応するワーカーに割り当てます。
+TaskCreate の戻り値からタスクIDを取得し、`TaskUpdate` で `owner` を設定：
+
+```
+TaskUpdate(taskId="<task-1-id>", owner="worker-1")
+TaskUpdate(taskId="<task-2-id>", owner="worker-2")
+TaskUpdate(taskId="<task-3-id>", owner="worker-3")
+// ... 試行数分
+```
+
+**タスクとワーカーの対応**: Trial N → worker-N（1対1対応）
+
 **例: 30% レベルで試行 1-3 の場合**
 
 ```
+// Step 2a: タスク作成（並列実行可）
 TaskCreate(subject="Trial 30%_001", description="Execute experiment trial.\n- context_level: 30%\n- trial_number: 1\n- chunks_to_read: 48\n- chunk_range: 0-47\n- workspace: workspaces/trial_30%_001/\n- result_file: results/trial_30%_001.json\n- project_root: /Users/naoto.hamada/github/ham/claude-code-context-experiment", activeForm="Executing trial 30%_001")
 
 TaskCreate(subject="Trial 30%_002", description="Execute experiment trial.\n- context_level: 30%\n- trial_number: 2\n- chunks_to_read: 48\n- chunk_range: 0-47\n- workspace: workspaces/trial_30%_002/\n- result_file: results/trial_30%_002.json\n- project_root: /Users/naoto.hamada/github/ham/claude-code-context-experiment", activeForm="Executing trial 30%_002")
 
 TaskCreate(subject="Trial 30%_003", description="Execute experiment trial.\n- context_level: 30%\n- trial_number: 3\n- chunks_to_read: 48\n- chunk_range: 0-47\n- workspace: workspaces/trial_30%_003/\n- result_file: results/trial_30%_003.json\n- project_root: /Users/naoto.hamada/github/ham/claude-code-context-experiment", activeForm="Executing trial 30%_003")
+
+// Step 2b: 事前割り当て（タスクID取得後に実行）
+TaskUpdate(taskId="<task-1-id>", owner="worker-1")
+TaskUpdate(taskId="<task-2-id>", owner="worker-2")
+TaskUpdate(taskId="<task-3-id>", owner="worker-3")
 ```
 
 ### Step 3: ワーカー起動
 
-**MUST: 1トライアル1ワーカー**。試行数と同数のワーカーを **1つのメッセージで同時に** 起動：
+**MUST: 1トライアル1ワーカー**。試行数と同数のワーカーを **1つのメッセージで同時に** 起動。
+各ワーカーのプロンプトに **割り当て済みタスク名** を明示し、競合を防止：
 
 ```
 Task(
   subagent_type="experiment-team-worker",
   team_name="exp-{level}pct",
   name="worker-1",
-  prompt="You are worker-1 in team exp-{level}pct. Check TaskList, claim an unassigned task, and execute the trial. Project root: /Users/naoto.hamada/github/ham/claude-code-context-experiment",
+  prompt="You are worker-1 in team exp-{level}pct. Your assigned task is 'Trial {level}_{001}'. Find it in TaskList by subject, set status to in_progress, and execute the trial. Do NOT claim any other task. Project root: /Users/naoto.hamada/github/ham/claude-code-context-experiment",
   description="Experiment worker 1"
 )
 
@@ -91,14 +115,17 @@ Task(
   subagent_type="experiment-team-worker",
   team_name="exp-{level}pct",
   name="worker-2",
-  prompt="You are worker-2 in team exp-{level}pct. Check TaskList, claim an unassigned task, and execute the trial. Project root: /Users/naoto.hamada/github/ham/claude-code-context-experiment",
+  prompt="You are worker-2 in team exp-{level}pct. Your assigned task is 'Trial {level}_{002}'. Find it in TaskList by subject, set status to in_progress, and execute the trial. Do NOT claim any other task. Project root: /Users/naoto.hamada/github/ham/claude-code-context-experiment",
   description="Experiment worker 2"
 )
 
 // ... 試行数分のワーカー
 ```
 
-**重要**: 全ワーカーを1つのメッセージ内で並列起動すること。
+**重要**:
+- 全ワーカーを1つのメッセージ内で並列起動すること
+- 各ワーカーのプロンプトに固有のタスク名（`Trial {level}_{number}`）を含めること
+- ワーカーは自分に割り当てられたタスクのみを実行する
 
 ### Step 4: 進捗監視
 
