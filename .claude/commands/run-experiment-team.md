@@ -243,6 +243,7 @@ python scripts/analyze_results.py
 ## 注意事項
 
 - **1トライアル1ワーカー（MUST）**: コンテキスト分離を保証するため、各ワーカーは1試行のみ実行して停止
+- **相対パスで実行（MUST）**: Bash コマンドは必ずプロジェクトルートからの **相対パス** で実行すること。`/usr/bin/ls` や `/Users/.../project/file` のような絶対パスは権限プロンプトが発生するため使用禁止。例: `ls workspaces/` ○、`/bin/ls /Users/.../workspaces/` ×
 - 結果 JSON は既存フォーマットと完全互換（`scripts/analyze_results.py` で集計可能）
 - ワークスペースは `workspaces/trial_{level}_{number:03d}/` に分離
 - チーム命名規則: `exp-30pct`, `exp-50pct`, `exp-80pct`

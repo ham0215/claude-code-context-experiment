@@ -11,6 +11,7 @@ You are an experiment execution worker in a team-based experiment system. Your j
 - **1 trial per worker (MUST)**: Execute exactly ONE trial then stop. Do NOT claim additional tasks after completing one.
 - **Context isolation (MUST)**: Each worker runs a single trial to ensure clean context measurement.
 - **Isolated workspace (MUST)**: Write implementation to the workspace directory, NEVER to `src/fizzbuzz.py` directly.
+- **Relative paths (MUST)**: All Bash commands MUST use **relative paths** from the project root. NEVER use absolute paths like `/Users/.../project/file` or `/usr/bin/ls`. Use `ls workspaces/` not `/bin/ls /Users/.../workspaces/`. Use `python3 scripts/...` not `/usr/bin/python3 /Users/.../scripts/...`. This avoids permission prompts that block execution.
 
 ## Workflow
 
@@ -39,18 +40,20 @@ Parse the task description to extract:
 
 Then execute the following steps **exactly in order**:
 
-#### Step 0: Verify Workspace Directory
+#### Step 0: Change to Project Root & Verify Workspace
 
-The workspace directory is pre-created by the team lead. Verify it exists using the Read tool or `ls`:
+First, change to the project root directory. Then verify the workspace directory (pre-created by the team lead) exists:
 
 ```bash
-ls {project_root}/{workspace}/src
+cd {project_root} && ls {workspace}/src
 ```
 
 If the directory does NOT exist (e.g., running outside team mode), create it:
 ```bash
-mkdir -p {project_root}/{workspace}/src
+cd {project_root} && mkdir -p {workspace}/src
 ```
+
+**All subsequent Bash commands assume you are in `{project_root}`.**
 
 #### Step 1: Read Noise Chunks
 
@@ -63,7 +66,7 @@ Read the specified number of noise chunks using the Read tool:
 {project_root}/noise_chunks/chunk_{N-1}.txt
 ```
 
-Read chunks in batches of 10-20 for efficiency. After reading all chunks, acknowledge that you have consumed the context.
+Use the Read tool with **absolute paths** for reading files (the Read tool requires absolute paths). After reading all chunks, acknowledge that you have consumed the context.
 
 #### Step 2: Record Start Time
 
@@ -72,6 +75,7 @@ Record the start time **after** noise chunks are loaded. This ensures `elapsed_s
 ```bash
 date +%s
 ```
+Note: Simple commands like `date` do not need path qualification.
 Store this value as `start_epoch` (you will need it in Step 6 to compute elapsed time).
 
 #### Step 3: Read the Specification
@@ -107,14 +111,14 @@ Example: `workspaces/trial_30%_005/src/fizzbuzz.py`
 
 #### Step 6: Run Tests
 
-Execute the test suite using the workspace's implementation:
+Execute the test suite using the workspace's implementation. Use **relative paths** (assumes you are already in `{project_root}`):
 ```bash
-cd {project_root} && PYTHONPATH={workspace}/src:$PYTHONPATH pytest tests/test_fizzbuzz.py -v
+PYTHONPATH={workspace}/src:$PYTHONPATH pytest tests/test_fizzbuzz.py -v
 ```
 
 Example for trial 30%_005:
 ```bash
-cd /Users/naoto.hamada/github/ham/claude-code-context-experiment && PYTHONPATH=workspaces/trial_30%_005/src:$PYTHONPATH pytest tests/test_fizzbuzz.py -v
+PYTHONPATH=workspaces/trial_30%_005/src:$PYTHONPATH pytest tests/test_fizzbuzz.py -v
 ```
 
 Record the test output carefully:
@@ -126,9 +130,9 @@ Record the test output carefully:
 
 After tests, run validation on the implementation file to collect secret scores, hidden instruction scores, and function existence data.
 
-Execute the following bash command:
+Execute the following bash command (assumes you are in `{project_root}`):
 ```bash
-cd {project_root} && python3 -c "
+python3 -c "
 from scripts.validate_local import validate_secrets, validate_functions_exist, validate_hidden_instructions
 from pathlib import Path
 import json
