@@ -2,8 +2,10 @@
   "permissions": {
     "allow": [
       "Bash(mkdir:*)",
+      "Bash(mkdir -p:*)",
       "Bash(pytest:*)",
       "Bash(cd:*)",
+      "Bash(PYTHONPATH=:*)",
       "Bash(python -m pytest:*)",
       "Bash(python scripts/validate_local.py:*)",
       "Bash(python scripts/analyze_results.py:*)",
