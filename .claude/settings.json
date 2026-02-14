@@ -6,6 +6,8 @@
       "Bash(pytest:*)",
       "Bash(cd:*)",
       "Bash(PYTHONPATH=:*)",
+      "Bash(PYTHONPATH=workspaces/:*)",
+      "Bash(cd * && PYTHONPATH=:*)",
       "Bash(python -m pytest:*)",
       "Bash(python scripts/validate_local.py:*)",
       "Bash(python scripts/analyze_results.py:*)",
