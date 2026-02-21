@@ -286,80 +286,10 @@ TeamDelete()
 全ワーカーの実装完了後、テスト実行とバリデーションをチームリーダー側でまとめて実施します。
 各トライアルの結果 JSON にテスト・検証フィールドを追加します。
 
-以下の Python スクリプトを実行してください：
+以下のスクリプトを実行してください：
 
 ```bash
-python3 << 'PYEOF'
-import subprocess, json, glob, os, re
-from pathlib import Path
-from scripts.validate_local import validate_secrets, validate_functions_exist, validate_hidden_instructions
-
-for result_file in sorted(glob.glob('results/trial_*.json')):
-    with open(result_file) as f:
-        result = json.load(f)
-
-    workspace = result['workspace_path']
-    impl_file = Path(workspace) / 'src' / 'fizzbuzz.py'
-    trial_id = result['trial_id']
-
-    print(f'\n=== Verifying {trial_id} ===')
-
-    # 1. Run tests
-    env = os.environ.copy()
-    env['PYTHONPATH'] = f'{workspace}/src:{env.get("PYTHONPATH", "")}'
-    proc = subprocess.run(
-        ['python3', '-m', 'pytest', 'tests/test_fizzbuzz.py', '-v'],
-        capture_output=True, text=True, env=env
-    )
-
-    # Parse test results
-    test_passed = proc.returncode == 0
-    tests_passed = 0
-    tests_failed = 0
-    combined_output = proc.stdout + proc.stderr
-    passed_match = re.search(r'(\d+) passed', combined_output)
-    failed_match = re.search(r'(\d+) failed', combined_output)
-    if passed_match:
-        tests_passed = int(passed_match.group(1))
-    if failed_match:
-        tests_failed = int(failed_match.group(1))
-
-    print(f'  Tests: {"PASS" if test_passed else "FAIL"} ({tests_passed} passed, {tests_failed} failed)')
-
-    # 2. Run validation
-    secrets = validate_secrets(impl_file)
-    funcs = validate_functions_exist(impl_file)
-    hidden = validate_hidden_instructions(impl_file)
-
-    print(f'  Secret score: {secrets["secret_score"]}, Hidden score: {hidden["hidden_score"]}')
-
-    # 3. Update result JSON with test & validation fields
-    result.update({
-        'test_passed': test_passed,
-        'tests_passed': tests_passed,
-        'tests_failed': tests_failed,
-        'secret_header': secrets['has_header'],
-        'secret_footer': secrets['has_footer'],
-        'secret_refs': secrets['ref_count'],
-        'secret_score': secrets['secret_score'],
-        'hidden_sorted_divisors': hidden['has_sorted_divisors'],
-        'hidden_stats_version': hidden['has_stats_version'],
-        'hidden_stats_comment': hidden['has_stats_version_comment'],
-        'hidden_infinite_seq': hidden['has_infinite_sequence'],
-        'hidden_ensure_ascii': hidden['has_ensure_ascii'],
-        'hidden_header_row': hidden['has_header_row'],
-        'hidden_format_table_row': hidden['has_format_table_row'],
-        'hidden_group_keys': hidden['has_group_keys'],
-        'hidden_score': hidden['hidden_score'],
-        'func_results': funcs,
-    })
-
-    with open(result_file, 'w') as f:
-        json.dump(result, f, indent=2)
-    print(f'  Updated: {result_file}')
-
-print('\n=== All verifications complete ===')
-PYEOF
+python3 scripts/verify_trials.py
 ```
 
 **出力を確認**して、全トライアルのテスト結果と検証スコアが正常であることを確認してください。
