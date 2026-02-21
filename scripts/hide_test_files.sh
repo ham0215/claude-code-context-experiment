@@ -21,12 +21,11 @@ echo "=== Hiding test/verification files from working tree ==="
 for f in "${FILES[@]}"; do
   if [ -f "$f" ]; then
     rm "$f"
-    git rm --cached "$f" 2>/dev/null || true
     echo "  Removed: $f"
   else
     echo "  Already absent: $f"
   fi
 done
 
-echo "=== Done. Files removed from working tree and git index. ==="
+echo "=== Done. Files removed from working tree. ==="
 echo "To restore: git checkout HEAD -- tests/ scripts/verify_trials.py scripts/validate_local.py scripts/analyze_results.py"
