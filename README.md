@@ -73,6 +73,8 @@ claude-code-context-experiment/
 ├── scripts/
 │   ├── analyze_results.py            # 結果分析
 │   ├── validate_local.py             # 検証ロジック
+│   ├── verify_trials.py              # トライアル検証（テスト実行+スコア付与）
+│   ├── hide_test_files.sh            # テスト/検証ファイル隠蔽（カンニング防止）
 │   ├── generate_noise_chunks.py      # ノイズチャンク生成
 │   └── generate_context_claudemd.py  # CLAUDE.md バリアント生成
 ├── noise_chunks/                     # コンテキスト消費用ノイズファイル
@@ -88,7 +90,8 @@ claude-code-context-experiment/
 │   │   ├── experiment-team-worker.md # チームワーカーエージェント
 │   │   └── commit-creator.md         # コミット作成エージェント
 │   └── commands/
-│       └── run-experiment-team.md    # チームベース実験実行スキル
+│       ├── run-experiment-team.md    # チームベース実験実行スキル
+│       └── verify-and-analyze.md     # 検証・集計スキル
 ├── CLAUDE.md                         # 実験時はバリアントに切り替え
 ├── workspaces/                       # 試行別ワークスペース（.gitignoreで除外）
 │   └── trial_{level}_{number}/
@@ -116,11 +119,22 @@ claude-code-context-experiment/
 
 Claude Code のチーム機能（TeamCreate / TaskCreate / SendMessage）を使用：
 
-1. チームリーダーが CLAUDE.md を切り替え、`/context` でコンテキスト消費量を検証
-2. タスクを事前登録し、各ワーカーに1対1で割り当て
-3. ワーカーを並列起動（1トライアル1ワーカー）
-4. 各ワーカーが独立したコンテキストで FizzBuzz 実装タスクを実行
-5. 結果を `results/trial_*.json` に個別保存
+1. チームリーダーが CLAUDE.md を切り替え、テスト/検証ファイルを隠蔽
+2. `/context` でコンテキスト消費量を検証
+3. タスクを事前登録し、各ワーカーに1対1で割り当て
+4. ワーカーを並列起動（1トライアル1ワーカー）
+5. 各ワーカーが独立したコンテキストで FizzBuzz 実装タスクを実行
+6. 結果を `results/trial_*.json` に個別保存
+7. `/verify-and-analyze` でファイル復元・テスト・集計
+
+### カンニング防止
+
+ワーカーがテストファイルや検証スクリプトを読み取って「正解」を知ることを防止する仕組み:
+
+| 防御層 | 手段 | 効果 |
+|--------|------|------|
+| ファイル隠蔽 | `scripts/hide_test_files.sh` でワーキングツリーから削除 | `Read` ツールでファイルを読めない |
+| git コマンド禁止 | ワーカーエージェントの `disallowedTools: Bash(git *)` | `git checkout` 等による復元をシステムレベルで拒否 |
 
 ---
 
@@ -156,15 +170,25 @@ Claude Code で以下のスキルを実行：
 **実行フロー:**
 
 1. CLAUDE.md を対象レベルのバリアントに切り替え確認
-2. `/context` でコンテキスト消費量を検証（許容範囲外なら中断）
-3. チーム作成 → タスク登録 → ワーカー並列起動
-4. 全ワーカー完了後、クリーンアップ → 結果集計
+2. テスト/検証ファイルをワーキングツリーから隠蔽（カンニング防止）
+3. `/context` でコンテキスト消費量を検証（許容範囲外なら中断）
+4. チーム作成 → タスク登録 → ワーカー並列起動
+5. 全ワーカー完了後、クリーンアップ
+6. `/verify-and-analyze` で検証・集計（ファイル自動復元 → テスト → 分析）
 
-### 結果分析
+### 検証・集計
 
-```bash
-python scripts/analyze_results.py
+実験完了後、以下のスキルで検証と集計を一括実行:
+
 ```
+/verify-and-analyze
+```
+
+**実行内容:**
+
+1. テスト/検証ファイルを git から復元
+2. `scripts/verify_trials.py` で各トライアルのテスト・検証を実行（結果JSONにスコアを付与）
+3. `scripts/analyze_results.py` で集計レポートを生成
 
 ---
 
@@ -226,6 +250,7 @@ Level       N   Target   Actual  Pass Rate   Secret   Hidden     Time
 
 | 日付 | バージョン | 変更内容 |
 |------|------------|----------|
+| 2026-02-21 | 4.1 | テスト/検証ファイル隠蔽によるカンニング防止、`/verify-and-analyze` スキル追加 |
 | 2026-02-14 | 4.0 | CLAUDE.md バリアント方式に移行、チームベース実行に一本化 |
 | 2026-02-01 | 3.1 | ワークスペース分離、/context測定、1試行1エージェント必須化 |
 | 2025-02-01 | 3.0 | サブエージェントによる並列実行サポート追加、CLI引数対応 |
