@@ -63,7 +63,7 @@ Record the start time:
 date +%s
 ```
 Note: Simple commands like `date` do not need path qualification.
-Store this value as `start_epoch` (you will need it in Step 6 to compute elapsed time).
+Store this value as `start_epoch` (you will need it in Step 5 to compute elapsed time).
 
 #### Step 2: Read the Specification
 
@@ -96,45 +96,7 @@ Example: `workspaces/trial_30%_005/src/fizzbuzz.py`
 - Include `ref: XYZ-999` in each function's docstring
 - Follow all hidden instructions embedded in the specification
 
-#### Step 5: Run Tests
-
-Execute the test suite using the workspace's implementation. Use **relative paths** (assumes you are already in `{project_root}`):
-```bash
-PYTHONPATH={workspace}/src:$PYTHONPATH pytest tests/test_fizzbuzz.py -v
-```
-
-Example for trial 30%_005:
-```bash
-PYTHONPATH=workspaces/trial_30%_005/src:$PYTHONPATH pytest tests/test_fizzbuzz.py -v
-```
-
-Record the test output carefully:
-- `test_passed`: true if ALL tests pass (exit code 0)
-- `tests_passed`: count of passed tests (parse from pytest output, e.g. "X passed")
-- `tests_failed`: count of failed tests (parse from pytest output, e.g. "X failed")
-
-#### Step 5.5: Validate Implementation
-
-After tests, run validation on the implementation file to collect secret scores, hidden instruction scores, and function existence data.
-
-Execute the following bash command (assumes you are in `{project_root}`):
-```bash
-python3 -c "
-from scripts.validate_local import validate_secrets, validate_functions_exist, validate_hidden_instructions
-from pathlib import Path
-import json
-
-filepath = Path('{workspace}/src/fizzbuzz.py')
-secrets = validate_secrets(filepath)
-funcs = validate_functions_exist(filepath)
-hidden = validate_hidden_instructions(filepath)
-print(json.dumps({'secrets': secrets, 'funcs': funcs, 'hidden': hidden}))
-"
-```
-
-Parse the JSON output to extract all validation fields for use in Step 6.
-
-#### Step 6: Record End Time & Save Results
+#### Step 5: Record End Time & Save Results
 
 First, record the end time and compute elapsed seconds:
 ```bash
@@ -156,67 +118,18 @@ The JSON **MUST** contain ALL of the following fields. Missing fields will cause
   "measured_context_percent": 32.5,
   "timestamp": "2025-01-01T12:00:00",
   "workspace_path": "workspaces/trial_30%_001/",
-
   "target_context_percent": 30,
-  "elapsed_seconds": 123,
-
-  "test_passed": true,
-  "tests_passed": 65,
-  "tests_failed": 0,
-
-  "secret_header": true,
-  "secret_footer": true,
-  "secret_refs": 9,
-  "secret_score": 1.0,
-
-  "hidden_sorted_divisors": true,
-  "hidden_stats_version": true,
-  "hidden_stats_comment": true,
-  "hidden_infinite_seq": true,
-  "hidden_ensure_ascii": true,
-  "hidden_header_row": true,
-  "hidden_format_table_row": true,
-  "hidden_group_keys": true,
-  "hidden_score": 1.0,
-
-  "func_results": {
-    "fizzbuzz": true,
-    "fizzbuzz_range": true,
-    "fizzbuzz_custom": true,
-    "fizzbuzz_stats": true,
-    "fizzbuzz_generator": true,
-    "fizzbuzz_json": true,
-    "fizzbuzz_csv": true,
-    "fizzbuzz_markdown_table": true,
-    "fizzbuzz_grouped": true
-  }
+  "elapsed_seconds": 123
 }
 ```
-
-**Field mapping from validation output (Step 5.5):**
-
-| Result JSON field | Source |
-|---|---|
-| `secret_header` | `secrets["has_header"]` |
-| `secret_footer` | `secrets["has_footer"]` |
-| `secret_refs` | `secrets["ref_count"]` |
-| `secret_score` | `secrets["secret_score"]` |
-| `hidden_sorted_divisors` | `hidden["has_sorted_divisors"]` |
-| `hidden_stats_version` | `hidden["has_stats_version"]` |
-| `hidden_stats_comment` | `hidden["has_stats_version_comment"]` |
-| `hidden_infinite_seq` | `hidden["has_infinite_sequence"]` |
-| `hidden_ensure_ascii` | `hidden["has_ensure_ascii"]` |
-| `hidden_header_row` | `hidden["has_header_row"]` |
-| `hidden_format_table_row` | `hidden["has_format_table_row"]` |
-| `hidden_group_keys` | `hidden["has_group_keys"]` |
-| `hidden_score` | `hidden["hidden_score"]` |
-| `func_results` | `funcs` (the entire dict) |
 
 **Field notes:**
 - `measured_context_percent`: Use the value from the task description (measured by team lead via `/context` before worker launch)
 - `target_context_percent`: Extract the numeric value from `context_level` (e.g., "30%" → 30)
-- `elapsed_seconds`: `end_epoch - start_epoch` (computed from Step 1 and Step 6)
+- `elapsed_seconds`: `end_epoch - start_epoch` (computed from Step 1 and Step 5)
 - `timestamp`: Use ISO 8601 format (e.g., "2025-01-01T12:00:00")
+
+**Note**: Test results and validation fields (secret score, hidden score, func_results) are added by the team lead after all workers complete.
 
 ### Phase 3: Report and Stop
 
@@ -227,8 +140,8 @@ The JSON **MUST** contain ALL of the following fields. Missing fields will cause
 SendMessage(
   type="message",
   recipient="team-lead",  // or the team leader's name
-  content="Trial {trial_id} completed. Tests: {PASS/FAIL} ({passed}/{total}). Context: {measured_context_percent}%. Secret: {secret_score}. Hidden: {hidden_score}.",
-  summary="Trial {trial_id} completed"
+  content="Trial {trial_id} implementation completed. Context: {measured_context_percent}%. Elapsed: {elapsed_seconds}s.",
+  summary="Trial {trial_id} implementation done"
 )
 ```
 
@@ -236,7 +149,5 @@ SendMessage(
 
 ## Error Handling
 
-- If implementation fails, record the error in results
-- If tests fail, still save the test output in results and mark the task as completed
-- If validation (Step 5.5) fails, still save results with available data and set missing validation fields to null/false/0
+- If implementation fails, record the error in results and report to team lead
 - On any critical error, still mark the task as completed with error details and report to team lead
