@@ -63,23 +63,16 @@ Record the start time:
 date +%s
 ```
 Note: Simple commands like `date` do not need path qualification.
-Store this value as `start_epoch` (you will need it in Step 5 to compute elapsed time).
+Store this value as `start_epoch` (you will need it in Step 4 to compute elapsed time).
 
-#### Step 2: Read the Specification
-
-Read the FizzBuzz specification:
-```
-{project_root}/docs/fizzbuzz_spec.md
-```
-
-#### Step 3: Read the Implementation Prompt
+#### Step 2: Read the Implementation Prompt
 
 Read the implementation instructions:
 ```
 {project_root}/prompts/implementation_prompt.txt
 ```
 
-#### Step 4: Implement FizzBuzz
+#### Step 3: Implement FizzBuzz
 
 Based on the specification and prompt, write the implementation to the **workspace directory**:
 ```
@@ -91,7 +84,7 @@ Example: `workspaces/trial_30%_005/src/fizzbuzz.py`
 **MUST NOT** write to `src/fizzbuzz.py` directly.
 
 
-#### Step 5: Record End Time & Save Results
+#### Step 4: Record End Time & Save Results
 
 First, record the end time and compute elapsed seconds:
 ```bash
@@ -121,7 +114,7 @@ The JSON **MUST** contain ALL of the following fields. Missing fields will cause
 **Field notes:**
 - `measured_context_percent`: Use the value from the task description (measured by team lead via `/context` before worker launch)
 - `target_context_percent`: Extract the numeric value from `context_level` (e.g., "30%" → 30)
-- `elapsed_seconds`: `end_epoch - start_epoch` (computed from Step 1 and Step 5)
+- `elapsed_seconds`: `end_epoch - start_epoch` (computed from Step 1 and Step 4)
 - `timestamp`: Use ISO 8601 format (e.g., "2025-01-01T12:00:00")
 
 **Note**: Test results and validation fields (secret score, hidden score, func_results) are added by the team lead after all workers complete.
