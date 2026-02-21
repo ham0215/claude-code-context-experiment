@@ -1,74 +1,116 @@
-# Technical Documentation: Machine Learning
+## Security Best Practices
 
-## Introduction to Machine Learning
-Machine Learning is a critical aspect of modern software development. Understanding these concepts is essential for building scalable, maintainable, and efficient systems. This document covers key concepts and best practices.
+### Authentication Token Handling
 
-### Hyperparameter tuning
-Hyperparameter tuning represents an important consideration in machine learning. When implementing solutions, developers must carefully evaluate the trade-offs involved. Key factors include performance, maintainability, and scalability requirements.
+This section covers the conventions and best practices for authentication token handling
+within the broader context of Python application security conventions including input sanitization, secret management, and secure coding patterns. Following these guidelines ensures
+consistency across the codebase and reduces the likelihood of common errors.
 
-Key considerations:
-- Consideration 1: Important aspect to evaluate
-- Consideration 2: Important aspect to evaluate
-- Consideration 3: Important aspect to evaluate
+Understanding authentication token handling is essential for maintaining high-quality Python
+code in our projects. The patterns described here have been refined through
+extensive use in production systems and reflect industry best practices adapted
+to our specific needs.
 
-Similique sunt in culpa qui officia deserunt mollitia animi, id est laborum et dolorum fuga. Et harum quidem rerum facilis est et expedita distinctio.
+#### Guidelines for Authentication Token Handling
 
-### Model deployment strategies
-Model deployment strategies represents an important consideration in machine learning. When implementing solutions, developers must carefully evaluate the trade-offs involved. Key factors include performance, maintainability, and scalability requirements.
+The following guidelines govern how authentication token handling should be implemented and maintained in this project:
 
-Key considerations:
-- Consideration 1: Important aspect to evaluate
-- Consideration 2: Important aspect to evaluate
-- Consideration 3: Important aspect to evaluate
+1. **Rule 1**: Never trust user input; validate and sanitize all external data at the boundary
+2. **Rule 2**: Use parameterized queries exclusively; never interpolate user data into SQL strings
+3. **Rule 3**: Store secrets in environment variables or a secret manager, never in code or config files
+4. **Rule 4**: Use `secrets` module instead of `random` for security-sensitive token generation
+5. **Rule 5**: Apply the principle of least privilege for service accounts and API keys
+6. **Rule 6**: Run `pip audit` and `safety check` in CI to detect vulnerable dependencies
+7. **Rule 7**: Use `hashlib` with `pbkdf2_hmac` or `bcrypt` for password hashing, never MD5 or SHA1 alone
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+#### Code Example
 
-### Transfer learning
-Transfer learning represents an important consideration in machine learning. When implementing solutions, developers must carefully evaluate the trade-offs involved. Key factors include performance, maintainability, and scalability requirements.
-
-Key considerations:
-- Consideration 1: Important aspect to evaluate
-- Consideration 2: Important aspect to evaluate
-- Consideration 3: Important aspect to evaluate
-
-Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt.
-
-### Neural network architectures
-Neural network architectures represents an important consideration in machine learning. When implementing solutions, developers must carefully evaluate the trade-offs involved. Key factors include performance, maintainability, and scalability requirements.
-
-Key considerations:
-- Consideration 1: Important aspect to evaluate
-- Consideration 2: Important aspect to evaluate
-- Consideration 3: Important aspect to evaluate
-- Consideration 4: Important aspect to evaluate
-- Consideration 5: Important aspect to evaluate
-
-Similique sunt in culpa qui officia deserunt mollitia animi, id est laborum et dolorum fuga. Et harum quidem rerum facilis est et expedita distinctio.
-
-## Code Example
+The following example demonstrates the recommended pattern for
+authentication token handling:
 
 ```python
-async def fetch_data(url: str) -> dict:
-    """Fetch data from API endpoint."""
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url) as response:
-            return await response.json()
+class AuthenticationTokenHandlingHandler:
+"""Handle authentication token handling operations.
+
+Implements the standard patterns for security best practices
+as defined in our project conventions.
+"""
+
+def __init__(self, config: dict[str, Any]) -> None:
+    self._config = config
+    self._logger = logging.getLogger(__name__)
+
+def process(self, data: Any) -> dict[str, Any]:
+    """Process data according to authentication token handling conventions.
+
+    Args:
+        data: Input data to process.
+
+    Returns:
+        Processed result dictionary.
+
+    Raises:
+        ValueError: If data is invalid.
+    """
+    self._validate(data)
+    result = self._transform(data)
+    self._logger.info("Processed %d items", len(result))
+    return result
+
+def _validate(self, data: Any) -> None:
+    """Validate input data."""
+    if not data:
+        raise ValueError("Input data must not be empty")
+
+def _transform(self, data: Any) -> dict[str, Any]:
+    """Apply transformation logic."""
+    return {"status": "processed", "items": data}
 ```
 
-Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+**Explanation**: This example follows our project conventions by using
+explicit type annotations, comprehensive docstrings, and proper error
+handling. Note the use of logging instead of print statements, and the
+structured return types that facilitate downstream processing.
 
-Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.
+#### Best Practices
 
-Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.
+When working with authentication token handling in the context of security best practices, keep these practices in mind:
 
-Curabitur pretium tincidunt lacus. Nulla gravida orci a odio. Nullam varius, turpis et commodo pharetra, est eros bibendum elit, nec luctus magna felis sollicitudin mauris.
+- Never trust user input; validate and sanitize all external data at the boundary
+- Use parameterized queries exclusively; never interpolate user data into SQL strings
+- Store secrets in environment variables or a secret manager, never in code or config files
+- Use `secrets` module instead of `random` for security-sensitive token generation
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+These practices help maintain code quality and reduce the risk of introducing bugs or performance issues related to authentication token handling.
 
-Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+#### Common Anti-Patterns
 
-Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+Avoid the following anti-patterns when implementing authentication token handling:
 
-At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et quas molestias excepturi sint occaecati cupiditate non provident.
+- **Ignoring error conditions**: Always handle potential failures explicitly
+  rather than silently swallowing exceptions or returning None.
+- **Missing documentation**: Every public function and class must have a
+  docstring explaining its purpose, parameters, and return value.
+- **Hardcoded configuration**: Extract configuration values into environment
+  variables or configuration files rather than embedding them in code.
+- **Insufficient testing**: Write tests that cover both the happy path and
+  edge cases, including error conditions and boundary values.
 
-Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+These anti-patterns are commonly encountered during code reviews and should
+be addressed before merging any changes related to security best practices.
+
+#### Integration Notes
+
+When integrating authentication token handling into existing code, ensure that
+the surrounding code follows the same conventions described in this
+section. Consistency is more important than any individual rule, so
+when in doubt, follow the established patterns in the immediate
+codebase context.
+
+The conventions described here apply specifically to Python application security conventions including input sanitization, secret management, and secure coding patterns.
+Other areas of the codebase may have different conventions that are
+documented in their respective sections.
+
+#### Compatibility Considerations
+
+These conventions are designed for Python 3.10 and later. When

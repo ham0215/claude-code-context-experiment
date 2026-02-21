@@ -1,84 +1,110 @@
-# Technical Documentation: Distributed Systems
+## Concurrent Processing
 
-## Introduction to Distributed Systems
-Distributed Systems is a critical aspect of modern software development. Understanding these concepts is essential for building scalable, maintainable, and efficient systems. This document covers key concepts and best practices.
+### Future and Callback Patterns
 
-### CQRS architecture
-CQRS architecture represents an important consideration in distributed systems. When implementing solutions, developers must carefully evaluate the trade-offs involved. Key factors include performance, maintainability, and scalability requirements.
+This section covers the conventions and best practices for future and callback patterns
+within the broader context of Python concurrency patterns using threading, multiprocessing, and concurrent.futures for parallel task execution. Following these guidelines ensures
+consistency across the codebase and reduces the likelihood of common errors.
 
-Key considerations:
-- Consideration 1: Important aspect to evaluate
-- Consideration 2: Important aspect to evaluate
-- Consideration 3: Important aspect to evaluate
-- Consideration 4: Important aspect to evaluate
+Understanding future and callback patterns is essential for maintaining high-quality Python
+code in our projects. The patterns described here have been refined through
+extensive use in production systems and reflect industry best practices adapted
+to our specific needs.
 
-Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt.
+#### Guidelines for Future and Callback Patterns
 
-### Message queue systems
-Message queue systems represents an important consideration in distributed systems. When implementing solutions, developers must carefully evaluate the trade-offs involved. Key factors include performance, maintainability, and scalability requirements.
+The following guidelines govern how future and callback patterns should be implemented and maintained in this project:
 
-Key considerations:
-- Consideration 1: Important aspect to evaluate
-- Consideration 2: Important aspect to evaluate
-- Consideration 3: Important aspect to evaluate
-- Consideration 4: Important aspect to evaluate
+1. **Rule 1**: Use `concurrent.futures` for high-level parallel execution instead of raw threads
+2. **Rule 2**: Choose `ThreadPoolExecutor` for I/O-bound and `ProcessPoolExecutor` for CPU-bound work
+3. **Rule 3**: Always use context managers (`with`) when creating executor instances
+4. **Rule 4**: Limit thread pool size to avoid resource exhaustion; default to `min(32, os.cpu_count() + 4)`
+5. **Rule 5**: Use `threading.Lock` to protect shared mutable state across threads
+6. **Rule 6**: Handle `KeyboardInterrupt` in concurrent code for clean shutdown
+7. **Rule 7**: Prefer immutable data when communicating between threads or processes
 
-Curabitur pretium tincidunt lacus. Nulla gravida orci a odio. Nullam varius, turpis et commodo pharetra, est eros bibendum elit, nec luctus magna felis sollicitudin mauris.
+    #### Code Example
 
-### Consensus algorithms (Paxos, Raft)
-Consensus algorithms (Paxos, Raft) represents an important consideration in distributed systems. When implementing solutions, developers must carefully evaluate the trade-offs involved. Key factors include performance, maintainability, and scalability requirements.
+    The following example demonstrates the recommended pattern for
+    future and callback patterns:
 
-Key considerations:
-- Consideration 1: Important aspect to evaluate
-- Consideration 2: Important aspect to evaluate
-- Consideration 3: Important aspect to evaluate
-- Consideration 4: Important aspect to evaluate
+    ```python
+    def with_future_and_callback_patterns(
+    retries: int = 3,
+    backoff_factor: float = 0.5,
+) -> Callable[[F], F]:
+    """Decorator to apply future and callback patterns conventions.
 
-Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.
+    Wraps a function with retry logic and logging following
+    the project's concurrent processing standards.
 
-### Microservices communication
-Microservices communication represents an important consideration in distributed systems. When implementing solutions, developers must carefully evaluate the trade-offs involved. Key factors include performance, maintainability, and scalability requirements.
+    Args:
+        retries: Maximum number of retry attempts.
+        backoff_factor: Multiplier for exponential backoff delay.
 
-Key considerations:
-- Consideration 1: Important aspect to evaluate
-- Consideration 2: Important aspect to evaluate
-- Consideration 3: Important aspect to evaluate
-- Consideration 4: Important aspect to evaluate
-- Consideration 5: Important aspect to evaluate
+    Returns:
+        Decorated function with retry behavior.
+    """
+    def decorator(func: F) -> F:
+        @functools.wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            logger = logging.getLogger(func.__module__)
+            last_exception: Exception | None = None
+            for attempt in range(1, retries + 1):
+                try:
+                    return func(*args, **kwargs)
+                except Exception as exc:
+                    last_exception = exc
+                    delay = backoff_factor * (2 ** (attempt - 1))
+                    logger.warning(
+                        "%s attempt %d/%d failed: %s (retry in %.1fs)",
+                        func.__name__, attempt, retries, exc, delay,
+                    )
+                    time.sleep(delay)
+            raise RuntimeError(
+                f"{func.__name__} failed after {retries} attempts"
+            ) from last_exception
+        return wrapper  # type: ignore[return-value]
+    return decorator
+    ```
 
-Curabitur pretium tincidunt lacus. Nulla gravida orci a odio. Nullam varius, turpis et commodo pharetra, est eros bibendum elit, nec luctus magna felis sollicitudin mauris.
+    **Explanation**: This example follows our project conventions by using
+    explicit type annotations, comprehensive docstrings, and proper error
+    handling. Note the use of logging instead of print statements, and the
+    structured return types that facilitate downstream processing.
 
-## Code Example
+#### Best Practices
 
-```python
-class DataProcessor:
-    """Process and transform data."""
+When working with future and callback patterns in the context of concurrent processing, keep these practices in mind:
 
-    def __init__(self, config: dict):
-        self.config = config
-        self._cache = {}
+- Use `concurrent.futures` for high-level parallel execution instead of raw threads
+- Choose `ThreadPoolExecutor` for I/O-bound and `ProcessPoolExecutor` for CPU-bound work
+- Always use context managers (`with`) when creating executor instances
+- Limit thread pool size to avoid resource exhaustion; default to `min(32, os.cpu_count() + 4)`
 
-    def process(self, input_data: list) -> list:
-        return [self._transform(item) for item in input_data]
+These practices help maintain code quality and reduce the risk of introducing bugs or performance issues related to future and callback patterns.
 
-    def _transform(self, item: dict) -> dict:
-        return {**item, "processed": True}
-```
+#### Common Anti-Patterns
 
-Similique sunt in culpa qui officia deserunt mollitia animi, id est laborum et dolorum fuga. Et harum quidem rerum facilis est et expedita distinctio.
+Avoid the following anti-patterns when implementing future and callback patterns:
 
-At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et quas molestias excepturi sint occaecati cupiditate non provident.
+- **Ignoring error conditions**: Always handle potential failures explicitly
+  rather than silently swallowing exceptions or returning None.
+- **Missing documentation**: Every public function and class must have a
+  docstring explaining its purpose, parameters, and return value.
+- **Hardcoded configuration**: Extract configuration values into environment
+  variables or configuration files rather than embedding them in code.
+- **Insufficient testing**: Write tests that cover both the happy path and
+  edge cases, including error conditions and boundary values.
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+These anti-patterns are commonly encountered during code reviews and should
+be addressed before merging any changes related to concurrent processing.
 
-Similique sunt in culpa qui officia deserunt mollitia animi, id est laborum et dolorum fuga. Et harum quidem rerum facilis est et expedita distinctio.
+#### Integration Notes
 
-Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt.
+When integrating future and callback patterns into existing code, ensure that
+the surrounding code follows the same conventions described in this
+section. Consistency is more important than any individual rule, so
+when in doubt, follow the established patterns in the immediate
+codebase context.
 
-Similique sunt in culpa qui officia deserunt mollitia animi, id est laborum et dolorum fuga. Et harum quidem rerum facilis est et expedita distinctio.
-
-Curabitur pretium tincidunt lacus. Nulla gravida orci a odio. Nullam varius, turpis et commodo pharetra, est eros bibendum elit, nec luctus magna felis sollicitudin mauris.
-
-Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.
-
-Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.

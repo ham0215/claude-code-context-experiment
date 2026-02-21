@@ -1,80 +1,112 @@
-# Technical Documentation: Software Design Patterns
+## Async/Await Patterns
 
-## Introduction to Software Design Patterns
-Software Design Patterns is a critical aspect of modern software development. Understanding these concepts is essential for building scalable, maintainable, and efficient systems. This document covers key concepts and best practices.
+### Async Iterators and Generators
 
-### Behavioral patterns (Observer, Strategy, Command)
-Behavioral patterns (Observer, Strategy, Command) represents an important consideration in software design patterns. When implementing solutions, developers must carefully evaluate the trade-offs involved. Key factors include performance, maintainability, and scalability requirements.
+This section covers the conventions and best practices for async iterators and generators
+within the broader context of asynchronous programming with asyncio, covering coroutine design, task orchestration, and concurrent I/O patterns. Following these guidelines ensures
+consistency across the codebase and reduces the likelihood of common errors.
 
-Key considerations:
-- Consideration 1: Important aspect to evaluate
-- Consideration 2: Important aspect to evaluate
-- Consideration 3: Important aspect to evaluate
-- Consideration 4: Important aspect to evaluate
+Understanding async iterators and generators is essential for maintaining high-quality Python
+code in our projects. The patterns described here have been refined through
+extensive use in production systems and reflect industry best practices adapted
+to our specific needs.
 
-Curabitur pretium tincidunt lacus. Nulla gravida orci a odio. Nullam varius, turpis et commodo pharetra, est eros bibendum elit, nec luctus magna felis sollicitudin mauris.
+#### Guidelines for Async Iterators and Generators
 
-### Repository pattern
-Repository pattern represents an important consideration in software design patterns. When implementing solutions, developers must carefully evaluate the trade-offs involved. Key factors include performance, maintainability, and scalability requirements.
+The following guidelines govern how async iterators and generators should be implemented and maintained in this project:
 
-Key considerations:
-- Consideration 1: Important aspect to evaluate
-- Consideration 2: Important aspect to evaluate
-- Consideration 3: Important aspect to evaluate
-- Consideration 4: Important aspect to evaluate
+1. **Rule 1**: Always use `async def` for functions performing I/O operations
+2. **Rule 2**: Set explicit timeouts for all network and external service calls
+3. **Rule 3**: Use `async with` for managing async resources such as sessions and connections
+4. **Rule 4**: Handle `asyncio.CancelledError` explicitly to clean up resources
+5. **Rule 5**: Prefer `asyncio.TaskGroup` over `asyncio.gather` for structured concurrency
+6. **Rule 6**: Avoid blocking calls inside async functions; use `asyncio.to_thread` for CPU-bound work
+7. **Rule 7**: Use `asyncio.Semaphore` to limit concurrent access to shared resources
 
-Similique sunt in culpa qui officia deserunt mollitia animi, id est laborum et dolorum fuga. Et harum quidem rerum facilis est et expedita distinctio.
+    #### Code Example
 
-### Structural patterns (Adapter, Decorator, Facade)
-Structural patterns (Adapter, Decorator, Facade) represents an important consideration in software design patterns. When implementing solutions, developers must carefully evaluate the trade-offs involved. Key factors include performance, maintainability, and scalability requirements.
+    The following example demonstrates the recommended pattern for
+    async iterators and generators:
 
-Key considerations:
-- Consideration 1: Important aspect to evaluate
-- Consideration 2: Important aspect to evaluate
-- Consideration 3: Important aspect to evaluate
-- Consideration 4: Important aspect to evaluate
-- Consideration 5: Important aspect to evaluate
+    ```python
+    @dataclass(frozen=True, slots=True)
+class AsyncIteratorsAndGeneratorsConfig:
+    """Configuration for async iterators and generators.
 
-Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.
+    Follows the project's async/await patterns conventions
+    for immutable configuration objects.
+    """
+    name: str
+    enabled: bool = True
+    max_items: int = 100
+    timeout_seconds: float = 30.0
+    tags: tuple[str, ...] = ()
 
-### Clean architecture
-Clean architecture represents an important consideration in software design patterns. When implementing solutions, developers must carefully evaluate the trade-offs involved. Key factors include performance, maintainability, and scalability requirements.
+    def __post_init__(self) -> None:
+        """Validate configuration values."""
+        if self.max_items <= 0:
+            raise ValueError("max_items must be positive")
+        if self.timeout_seconds <= 0:
+            raise ValueError("timeout_seconds must be positive")
 
-Key considerations:
-- Consideration 1: Important aspect to evaluate
-- Consideration 2: Important aspect to evaluate
-- Consideration 3: Important aspect to evaluate
-- Consideration 4: Important aspect to evaluate
+    @classmethod
+    def from_env(cls, prefix: str = "ASYNC_ITERATORS_AND_GENERATORS") -> "AsyncIteratorsAndGeneratorsConfig":
+        """Create configuration from environment variables.
 
-Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+        Args:
+            prefix: Environment variable prefix.
 
-## Code Example
+        Returns:
+            Configured instance.
+        """
+        import os
+        return cls(
+            name=os.environ.get(f"{prefix}_NAME", "default"),
+            enabled=os.environ.get(f"{prefix}_ENABLED", "true").lower() == "true",
+            max_items=int(os.environ.get(f"{prefix}_MAX_ITEMS", "100")),
+            timeout_seconds=float(os.environ.get(f"{prefix}_TIMEOUT", "30.0")),
+        )
+    ```
 
-```python
-class DataProcessor:
-    """Process and transform data."""
+    **Explanation**: This example follows our project conventions by using
+    explicit type annotations, comprehensive docstrings, and proper error
+    handling. Note the use of logging instead of print statements, and the
+    structured return types that facilitate downstream processing.
 
-    def __init__(self, config: dict):
-        self.config = config
-        self._cache = {}
+#### Best Practices
 
-    def process(self, input_data: list) -> list:
-        return [self._transform(item) for item in input_data]
+When working with async iterators and generators in the context of async/await patterns, keep these practices in mind:
 
-    def _transform(self, item: dict) -> dict:
-        return {**item, "processed": True}
-```
+- Always use `async def` for functions performing I/O operations
+- Set explicit timeouts for all network and external service calls
+- Use `async with` for managing async resources such as sessions and connections
+- Handle `asyncio.CancelledError` explicitly to clean up resources
 
-At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et quas molestias excepturi sint occaecati cupiditate non provident.
+These practices help maintain code quality and reduce the risk of introducing bugs or performance issues related to async iterators and generators.
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+#### Common Anti-Patterns
 
-Curabitur pretium tincidunt lacus. Nulla gravida orci a odio. Nullam varius, turpis et commodo pharetra, est eros bibendum elit, nec luctus magna felis sollicitudin mauris.
+Avoid the following anti-patterns when implementing async iterators and generators:
 
-Curabitur pretium tincidunt lacus. Nulla gravida orci a odio. Nullam varius, turpis et commodo pharetra, est eros bibendum elit, nec luctus magna felis sollicitudin mauris.
+- **Ignoring error conditions**: Always handle potential failures explicitly
+  rather than silently swallowing exceptions or returning None.
+- **Missing documentation**: Every public function and class must have a
+  docstring explaining its purpose, parameters, and return value.
+- **Hardcoded configuration**: Extract configuration values into environment
+  variables or configuration files rather than embedding them in code.
+- **Insufficient testing**: Write tests that cover both the happy path and
+  edge cases, including error conditions and boundary values.
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+These anti-patterns are commonly encountered during code reviews and should
+be addressed before merging any changes related to async/await patterns.
 
-Curabitur pretium tincidunt lacus. Nulla gravida orci a odio. Nullam varius, turpis et commodo pharetra, est eros bibendum elit, nec luctus magna felis sollicitudin mauris.
+#### Integration Notes
 
-Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+When integrating async iterators and generators into existing code, ensure that
+the surrounding code follows the same conventions described in this
+section. Consistency is more important than any individual rule, so
+when in doubt, follow the established patterns in the immediate
+codebase context.
+
+The conventions described here apply specifically to asynchronous programming with asyncio, covering coroutine design, task orchestration, and concurrent I/O patterns.
+Other areas of the codebase may have different conventions that are

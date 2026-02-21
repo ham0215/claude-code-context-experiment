@@ -1,82 +1,110 @@
-# Technical Documentation: Database Architecture
+## Exception Handling Patterns
 
-## Introduction to Database Architecture
-Database Architecture is a critical aspect of modern software development. Understanding these concepts is essential for building scalable, maintainable, and efficient systems. This document covers key concepts and best practices.
+### Third-Party Exception Wrapping
 
-### Normalization forms (1NF, 2NF, 3NF, BCNF)
-Normalization forms (1NF, 2NF, 3NF, BCNF) represents an important consideration in database architecture. When implementing solutions, developers must carefully evaluate the trade-offs involved. Key factors include performance, maintainability, and scalability requirements.
+This section covers the conventions and best practices for third-party exception wrapping
+within the broader context of Python exception handling conventions including custom exception hierarchies, error propagation, and recovery strategies. Following these guidelines ensures
+consistency across the codebase and reduces the likelihood of common errors.
 
-Key considerations:
-- Consideration 1: Important aspect to evaluate
-- Consideration 2: Important aspect to evaluate
-- Consideration 3: Important aspect to evaluate
-- Consideration 4: Important aspect to evaluate
+Understanding third-party exception wrapping is essential for maintaining high-quality Python
+code in our projects. The patterns described here have been refined through
+extensive use in production systems and reflect industry best practices adapted
+to our specific needs.
 
-Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt.
+#### Guidelines for Third-Party Exception Wrapping
 
-### ACID properties
-ACID properties represents an important consideration in database architecture. When implementing solutions, developers must carefully evaluate the trade-offs involved. Key factors include performance, maintainability, and scalability requirements.
+The following guidelines govern how third-party exception wrapping should be implemented and maintained in this project:
 
-Key considerations:
-- Consideration 1: Important aspect to evaluate
-- Consideration 2: Important aspect to evaluate
-- Consideration 3: Important aspect to evaluate
-- Consideration 4: Important aspect to evaluate
-- Consideration 5: Important aspect to evaluate
+1. **Rule 1**: Define a project-level base exception class that all custom exceptions inherit from
+2. **Rule 2**: Use `raise ... from ...` for exception chaining to preserve the original traceback
+3. **Rule 3**: Never use bare `except:` clauses; always specify the exception type
+4. **Rule 4**: Catch specific exceptions rather than broad `Exception` unless re-raising
+5. **Rule 5**: Include relevant context data in custom exception attributes
+6. **Rule 6**: Log exceptions at the handler level, not at the raise site
+7. **Rule 7**: Use `contextlib.suppress` for expected exceptions that need no handling
 
-Similique sunt in culpa qui officia deserunt mollitia animi, id est laborum et dolorum fuga. Et harum quidem rerum facilis est et expedita distinctio.
+    #### Code Example
 
-### Index optimization strategies
-Index optimization strategies represents an important consideration in database architecture. When implementing solutions, developers must carefully evaluate the trade-offs involved. Key factors include performance, maintainability, and scalability requirements.
+    The following example demonstrates the recommended pattern for
+    third-party exception wrapping:
 
-Key considerations:
-- Consideration 1: Important aspect to evaluate
-- Consideration 2: Important aspect to evaluate
-- Consideration 3: Important aspect to evaluate
+    ```python
+    def with_thirdparty_exception_wrapping(
+    retries: int = 3,
+    backoff_factor: float = 0.5,
+) -> Callable[[F], F]:
+    """Decorator to apply third-party exception wrapping conventions.
 
-Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+    Wraps a function with retry logic and logging following
+    the project's exception handling patterns standards.
 
-### CAP theorem implications
-CAP theorem implications represents an important consideration in database architecture. When implementing solutions, developers must carefully evaluate the trade-offs involved. Key factors include performance, maintainability, and scalability requirements.
+    Args:
+        retries: Maximum number of retry attempts.
+        backoff_factor: Multiplier for exponential backoff delay.
 
-Key considerations:
-- Consideration 1: Important aspect to evaluate
-- Consideration 2: Important aspect to evaluate
-- Consideration 3: Important aspect to evaluate
-- Consideration 4: Important aspect to evaluate
-- Consideration 5: Important aspect to evaluate
+    Returns:
+        Decorated function with retry behavior.
+    """
+    def decorator(func: F) -> F:
+        @functools.wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            logger = logging.getLogger(func.__module__)
+            last_exception: Exception | None = None
+            for attempt in range(1, retries + 1):
+                try:
+                    return func(*args, **kwargs)
+                except Exception as exc:
+                    last_exception = exc
+                    delay = backoff_factor * (2 ** (attempt - 1))
+                    logger.warning(
+                        "%s attempt %d/%d failed: %s (retry in %.1fs)",
+                        func.__name__, attempt, retries, exc, delay,
+                    )
+                    time.sleep(delay)
+            raise RuntimeError(
+                f"{func.__name__} failed after {retries} attempts"
+            ) from last_exception
+        return wrapper  # type: ignore[return-value]
+    return decorator
+    ```
 
-Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt.
+    **Explanation**: This example follows our project conventions by using
+    explicit type annotations, comprehensive docstrings, and proper error
+    handling. Note the use of logging instead of print statements, and the
+    structured return types that facilitate downstream processing.
 
-## Code Example
+#### Best Practices
 
-```python
-class DataProcessor:
-    """Process and transform data."""
+When working with third-party exception wrapping in the context of exception handling patterns, keep these practices in mind:
 
-    def __init__(self, config: dict):
-        self.config = config
-        self._cache = {}
+- Define a project-level base exception class that all custom exceptions inherit from
+- Use `raise ... from ...` for exception chaining to preserve the original traceback
+- Never use bare `except:` clauses; always specify the exception type
+- Catch specific exceptions rather than broad `Exception` unless re-raising
 
-    def process(self, input_data: list) -> list:
-        return [self._transform(item) for item in input_data]
+These practices help maintain code quality and reduce the risk of introducing bugs or performance issues related to third-party exception wrapping.
 
-    def _transform(self, item: dict) -> dict:
-        return {**item, "processed": True}
-```
+#### Common Anti-Patterns
 
-Curabitur pretium tincidunt lacus. Nulla gravida orci a odio. Nullam varius, turpis et commodo pharetra, est eros bibendum elit, nec luctus magna felis sollicitudin mauris.
+Avoid the following anti-patterns when implementing third-party exception wrapping:
 
-Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt.
+- **Ignoring error conditions**: Always handle potential failures explicitly
+  rather than silently swallowing exceptions or returning None.
+- **Missing documentation**: Every public function and class must have a
+  docstring explaining its purpose, parameters, and return value.
+- **Hardcoded configuration**: Extract configuration values into environment
+  variables or configuration files rather than embedding them in code.
+- **Insufficient testing**: Write tests that cover both the happy path and
+  edge cases, including error conditions and boundary values.
 
-At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et quas molestias excepturi sint occaecati cupiditate non provident.
+These anti-patterns are commonly encountered during code reviews and should
+be addressed before merging any changes related to exception handling patterns.
 
-Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+#### Integration Notes
 
-Curabitur pretium tincidunt lacus. Nulla gravida orci a odio. Nullam varius, turpis et commodo pharetra, est eros bibendum elit, nec luctus magna felis sollicitudin mauris.
+When integrating third-party exception wrapping into existing code, ensure that
+the surrounding code follows the same conventions described in this
+section. Consistency is more important than any individual rule, so
+when in doubt, follow the established patterns in the immediate
+codebase context.
 
-Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem.
-
-At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et quas molestias excepturi sint occaecati cupiditate non provident.
-
-Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.

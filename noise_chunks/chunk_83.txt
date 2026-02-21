@@ -1,68 +1,110 @@
-# Technical Documentation: Distributed Systems
+## Advanced Type Hints
 
-## Introduction to Distributed Systems
-Distributed Systems is a critical aspect of modern software development. Understanding these concepts is essential for building scalable, maintainable, and efficient systems. This document covers key concepts and best practices.
+### Callable Type Annotations
 
-### Circuit breaker patterns
-Circuit breaker patterns represents an important consideration in distributed systems. When implementing solutions, developers must carefully evaluate the trade-offs involved. Key factors include performance, maintainability, and scalability requirements.
+This section covers the conventions and best practices for callable type annotations
+within the broader context of advanced Python type annotation patterns using Protocol, TypeVar, Generic, and other typing constructs for expressive static analysis. Following these guidelines ensures
+consistency across the codebase and reduces the likelihood of common errors.
 
-Key considerations:
-- Consideration 1: Important aspect to evaluate
-- Consideration 2: Important aspect to evaluate
-- Consideration 3: Important aspect to evaluate
+Understanding callable type annotations is essential for maintaining high-quality Python
+code in our projects. The patterns described here have been refined through
+extensive use in production systems and reflect industry best practices adapted
+to our specific needs.
 
-Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt.
+#### Guidelines for Callable Type Annotations
 
-### Message queue systems
-Message queue systems represents an important consideration in distributed systems. When implementing solutions, developers must carefully evaluate the trade-offs involved. Key factors include performance, maintainability, and scalability requirements.
+The following guidelines govern how callable type annotations should be implemented and maintained in this project:
 
-Key considerations:
-- Consideration 1: Important aspect to evaluate
-- Consideration 2: Important aspect to evaluate
-- Consideration 3: Important aspect to evaluate
-- Consideration 4: Important aspect to evaluate
+1. **Rule 1**: Use `Protocol` for structural subtyping instead of abstract base classes where possible
+2. **Rule 2**: Define `TypeVar` with meaningful names that indicate the constraint (e.g., `UserT`, `ResponseT`)
+3. **Rule 3**: Prefer `Sequence` over `list` in function signatures for input parameters
+4. **Rule 4**: Use `TypeGuard` to help type checkers understand custom type narrowing functions
+5. **Rule 5**: Apply `@overload` to functions with different return types based on input types
+6. **Rule 6**: Use `Final` for constants that should not be reassigned
+7. **Rule 7**: Run `mypy --strict` in CI to catch type errors early
 
-At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et quas molestias excepturi sint occaecati cupiditate non provident.
+    #### Code Example
 
-### Microservices communication
-Microservices communication represents an important consideration in distributed systems. When implementing solutions, developers must carefully evaluate the trade-offs involved. Key factors include performance, maintainability, and scalability requirements.
+    The following example demonstrates the recommended pattern for
+    callable type annotations:
 
-Key considerations:
-- Consideration 1: Important aspect to evaluate
-- Consideration 2: Important aspect to evaluate
-- Consideration 3: Important aspect to evaluate
-- Consideration 4: Important aspect to evaluate
+    ```python
+    async def callable_type_annotations_async(
+    items: list[str],
+    concurrency: int = 10,
+) -> list[dict[str, Any]]:
+    """Process callable type annotations items asynchronously.
 
-Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+    Follows the project's advanced type hints conventions
+    for async operations with controlled concurrency.
 
-### CQRS architecture
-CQRS architecture represents an important consideration in distributed systems. When implementing solutions, developers must carefully evaluate the trade-offs involved. Key factors include performance, maintainability, and scalability requirements.
+    Args:
+        items: List of item identifiers to process.
+        concurrency: Maximum number of concurrent operations.
 
-Key considerations:
-- Consideration 1: Important aspect to evaluate
-- Consideration 2: Important aspect to evaluate
-- Consideration 3: Important aspect to evaluate
+    Returns:
+        List of processed results.
+    """
+    semaphore = asyncio.Semaphore(concurrency)
+    logger = logging.getLogger(__name__)
 
-Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem.
+    async def _process_one(item: str) -> dict[str, Any]:
+        async with semaphore:
+            logger.debug("Processing item: %s", item)
+            await asyncio.sleep(0)  # yield control
+            return {"id": item, "status": "completed"}
 
-Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.
+    tasks = [_process_one(item) for item in items]
+    results = await asyncio.gather(*tasks)
+    logger.info("Completed %d items for callable_type_annotations", len(results))
+    return list(results)
+    ```
 
-Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem.
+    **Explanation**: This example follows our project conventions by using
+    explicit type annotations, comprehensive docstrings, and proper error
+    handling. Note the use of logging instead of print statements, and the
+    structured return types that facilitate downstream processing.
 
-Curabitur pretium tincidunt lacus. Nulla gravida orci a odio. Nullam varius, turpis et commodo pharetra, est eros bibendum elit, nec luctus magna felis sollicitudin mauris.
+#### Best Practices
 
-At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et quas molestias excepturi sint occaecati cupiditate non provident.
+When working with callable type annotations in the context of advanced type hints, keep these practices in mind:
 
-Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt.
+- Use `Protocol` for structural subtyping instead of abstract base classes where possible
+- Define `TypeVar` with meaningful names that indicate the constraint (e.g., `UserT`, `ResponseT`)
+- Prefer `Sequence` over `list` in function signatures for input parameters
+- Use `TypeGuard` to help type checkers understand custom type narrowing functions
 
-Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt.
+These practices help maintain code quality and reduce the risk of introducing bugs or performance issues related to callable type annotations.
 
-Curabitur pretium tincidunt lacus. Nulla gravida orci a odio. Nullam varius, turpis et commodo pharetra, est eros bibendum elit, nec luctus magna felis sollicitudin mauris.
+#### Common Anti-Patterns
 
-Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem.
+Avoid the following anti-patterns when implementing callable type annotations:
 
-Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+- **Ignoring error conditions**: Always handle potential failures explicitly
+  rather than silently swallowing exceptions or returning None.
+- **Missing documentation**: Every public function and class must have a
+  docstring explaining its purpose, parameters, and return value.
+- **Hardcoded configuration**: Extract configuration values into environment
+  variables or configuration files rather than embedding them in code.
+- **Insufficient testing**: Write tests that cover both the happy path and
+  edge cases, including error conditions and boundary values.
 
-Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.
+These anti-patterns are commonly encountered during code reviews and should
+be addressed before merging any changes related to advanced type hints.
 
-Curabitur pretium tincidunt lacus. Nulla gravida orci a odio. Nullam varius, turpis et commodo pharetra, est eros bibendum elit, nec luctus magna felis sollicitudin mauris.
+#### Integration Notes
+
+When integrating callable type annotations into existing code, ensure that
+the surrounding code follows the same conventions described in this
+section. Consistency is more important than any individual rule, so
+when in doubt, follow the established patterns in the immediate
+codebase context.
+
+The conventions described here apply specifically to advanced Python type annotation patterns using Protocol, TypeVar, Generic, and other typing constructs for expressive static analysis.
+Other areas of the codebase may have different conventions that are
+documented in their respective sections.
+
+#### Compatibility Considerations
+
+These conventions are designed for Python 3.10 and later. When
+working with codebases that must support earlier Python versions,

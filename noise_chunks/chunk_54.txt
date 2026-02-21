@@ -1,70 +1,116 @@
-# Technical Documentation: Machine Learning
+## Test Patterns with pytest
 
-## Introduction to Machine Learning
-Machine Learning is a critical aspect of modern software development. Understanding these concepts is essential for building scalable, maintainable, and efficient systems. This document covers key concepts and best practices.
+### Test Data Factory Patterns
 
-### Supervised learning algorithms
-Supervised learning algorithms represents an important consideration in machine learning. When implementing solutions, developers must carefully evaluate the trade-offs involved. Key factors include performance, maintainability, and scalability requirements.
+This section covers the conventions and best practices for test data factory patterns
+within the broader context of testing conventions using pytest, including fixture design, parametrization, and test organization patterns. Following these guidelines ensures
+consistency across the codebase and reduces the likelihood of common errors.
 
-Key considerations:
-- Consideration 1: Important aspect to evaluate
-- Consideration 2: Important aspect to evaluate
-- Consideration 3: Important aspect to evaluate
-- Consideration 4: Important aspect to evaluate
-- Consideration 5: Important aspect to evaluate
+Understanding test data factory patterns is essential for maintaining high-quality Python
+code in our projects. The patterns described here have been refined through
+extensive use in production systems and reflect industry best practices adapted
+to our specific needs.
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+#### Guidelines for Test Data Factory Patterns
 
-### Transfer learning
-Transfer learning represents an important consideration in machine learning. When implementing solutions, developers must carefully evaluate the trade-offs involved. Key factors include performance, maintainability, and scalability requirements.
+The following guidelines govern how test data factory patterns should be implemented and maintained in this project:
 
-Key considerations:
-- Consideration 1: Important aspect to evaluate
-- Consideration 2: Important aspect to evaluate
-- Consideration 3: Important aspect to evaluate
+1. **Rule 1**: Use descriptive test names following `test_<unit>_<scenario>_<expected>` pattern
+2. **Rule 2**: Prefer fixtures over setUp/tearDown for test resource management
+3. **Rule 3**: Use `pytest.mark.parametrize` to reduce test duplication
+4. **Rule 4**: Mock external dependencies at the boundary, not deep within the call stack
+5. **Rule 5**: Use factory functions or `factory_boy` for complex test data creation
+6. **Rule 6**: Keep test files mirroring the source directory structure
+7. **Rule 7**: Mark slow tests with `@pytest.mark.slow` for selective execution
 
-Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem.
+    #### Code Example
 
-### Model evaluation metrics
-Model evaluation metrics represents an important consideration in machine learning. When implementing solutions, developers must carefully evaluate the trade-offs involved. Key factors include performance, maintainability, and scalability requirements.
+    The following example demonstrates the recommended pattern for
+    test data factory patterns:
 
-Key considerations:
-- Consideration 1: Important aspect to evaluate
-- Consideration 2: Important aspect to evaluate
-- Consideration 3: Important aspect to evaluate
+    ```python
+    @dataclass(frozen=True, slots=True)
+class TestDataFactoryPatternsConfig:
+    """Configuration for test data factory patterns.
 
-Similique sunt in culpa qui officia deserunt mollitia animi, id est laborum et dolorum fuga. Et harum quidem rerum facilis est et expedita distinctio.
+    Follows the project's test patterns with pytest conventions
+    for immutable configuration objects.
+    """
+    name: str
+    enabled: bool = True
+    max_items: int = 100
+    timeout_seconds: float = 30.0
+    tags: tuple[str, ...] = ()
 
-### Neural network architectures
-Neural network architectures represents an important consideration in machine learning. When implementing solutions, developers must carefully evaluate the trade-offs involved. Key factors include performance, maintainability, and scalability requirements.
+    def __post_init__(self) -> None:
+        """Validate configuration values."""
+        if self.max_items <= 0:
+            raise ValueError("max_items must be positive")
+        if self.timeout_seconds <= 0:
+            raise ValueError("timeout_seconds must be positive")
 
-Key considerations:
-- Consideration 1: Important aspect to evaluate
-- Consideration 2: Important aspect to evaluate
-- Consideration 3: Important aspect to evaluate
-- Consideration 4: Important aspect to evaluate
-- Consideration 5: Important aspect to evaluate
+    @classmethod
+    def from_env(cls, prefix: str = "TEST_DATA_FACTORY_PATTERNS") -> "TestDataFactoryPatternsConfig":
+        """Create configuration from environment variables.
 
-Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt.
+        Args:
+            prefix: Environment variable prefix.
 
-At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et quas molestias excepturi sint occaecati cupiditate non provident.
+        Returns:
+            Configured instance.
+        """
+        import os
+        return cls(
+            name=os.environ.get(f"{prefix}_NAME", "default"),
+            enabled=os.environ.get(f"{prefix}_ENABLED", "true").lower() == "true",
+            max_items=int(os.environ.get(f"{prefix}_MAX_ITEMS", "100")),
+            timeout_seconds=float(os.environ.get(f"{prefix}_TIMEOUT", "30.0")),
+        )
+    ```
 
-At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et quas molestias excepturi sint occaecati cupiditate non provident.
+    **Explanation**: This example follows our project conventions by using
+    explicit type annotations, comprehensive docstrings, and proper error
+    handling. Note the use of logging instead of print statements, and the
+    structured return types that facilitate downstream processing.
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+#### Best Practices
 
-Curabitur pretium tincidunt lacus. Nulla gravida orci a odio. Nullam varius, turpis et commodo pharetra, est eros bibendum elit, nec luctus magna felis sollicitudin mauris.
+When working with test data factory patterns in the context of test patterns with pytest, keep these practices in mind:
 
-Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem.
+- Use descriptive test names following `test_<unit>_<scenario>_<expected>` pattern
+- Prefer fixtures over setUp/tearDown for test resource management
+- Use `pytest.mark.parametrize` to reduce test duplication
+- Mock external dependencies at the boundary, not deep within the call stack
 
-Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem.
+These practices help maintain code quality and reduce the risk of introducing bugs or performance issues related to test data factory patterns.
 
-Similique sunt in culpa qui officia deserunt mollitia animi, id est laborum et dolorum fuga. Et harum quidem rerum facilis est et expedita distinctio.
+#### Common Anti-Patterns
 
-Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt.
+Avoid the following anti-patterns when implementing test data factory patterns:
 
-At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et quas molestias excepturi sint occaecati cupiditate non provident.
+- **Ignoring error conditions**: Always handle potential failures explicitly
+  rather than silently swallowing exceptions or returning None.
+- **Missing documentation**: Every public function and class must have a
+  docstring explaining its purpose, parameters, and return value.
+- **Hardcoded configuration**: Extract configuration values into environment
+  variables or configuration files rather than embedding them in code.
+- **Insufficient testing**: Write tests that cover both the happy path and
+  edge cases, including error conditions and boundary values.
 
-Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+These anti-patterns are commonly encountered during code reviews and should
+be addressed before merging any changes related to test patterns with pytest.
 
-Similique sunt in culpa qui officia deserunt mollitia animi, id est laborum et dolorum fuga. Et harum quidem rerum facilis est et expedita distinctio.
+#### Integration Notes
+
+When integrating test data factory patterns into existing code, ensure that
+the surrounding code follows the same conventions described in this
+section. Consistency is more important than any individual rule, so
+when in doubt, follow the established patterns in the immediate
+codebase context.
+
+The conventions described here apply specifically to testing conventions using pytest, including fixture design, parametrization, and test organization patterns.
+Other areas of the codebase may have different conventions that are
+documented in their respective sections.
+
+#### Compatibility Considerations
+

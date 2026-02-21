@@ -1,69 +1,112 @@
-# Technical Documentation: Distributed Systems
+## Flask/FastAPI Routing
 
-## Introduction to Distributed Systems
-Distributed Systems is a critical aspect of modern software development. Understanding these concepts is essential for building scalable, maintainable, and efficient systems. This document covers key concepts and best practices.
+### Blueprint and Router Organization
 
-### Event sourcing patterns
-Event sourcing patterns represents an important consideration in distributed systems. When implementing solutions, developers must carefully evaluate the trade-offs involved. Key factors include performance, maintainability, and scalability requirements.
+This section covers the conventions and best practices for blueprint and router organization
+within the broader context of web framework routing conventions for Flask and FastAPI, including endpoint design, middleware, and request handling. Following these guidelines ensures
+consistency across the codebase and reduces the likelihood of common errors.
 
-Key considerations:
-- Consideration 1: Important aspect to evaluate
-- Consideration 2: Important aspect to evaluate
-- Consideration 3: Important aspect to evaluate
-- Consideration 4: Important aspect to evaluate
-- Consideration 5: Important aspect to evaluate
+Understanding blueprint and router organization is essential for maintaining high-quality Python
+code in our projects. The patterns described here have been refined through
+extensive use in production systems and reflect industry best practices adapted
+to our specific needs.
 
-At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et quas molestias excepturi sint occaecati cupiditate non provident.
+#### Guidelines for Blueprint and Router Organization
 
-### Service mesh concepts
-Service mesh concepts represents an important consideration in distributed systems. When implementing solutions, developers must carefully evaluate the trade-offs involved. Key factors include performance, maintainability, and scalability requirements.
+The following guidelines govern how blueprint and router organization should be implemented and maintained in this project:
 
-Key considerations:
-- Consideration 1: Important aspect to evaluate
-- Consideration 2: Important aspect to evaluate
-- Consideration 3: Important aspect to evaluate
+1. **Rule 1**: Use plural nouns for resource endpoints (e.g., `/users`, `/orders`)
+2. **Rule 2**: Return consistent error response structures with `detail` and `status_code`
+3. **Rule 3**: Validate all request bodies using Pydantic models or marshmallow schemas
+4. **Rule 4**: Group related endpoints into blueprints or routers by domain
+5. **Rule 5**: Use dependency injection for shared resources like database sessions
+6. **Rule 6**: Apply rate limiting middleware to public-facing endpoints
+7. **Rule 7**: Document all endpoints with OpenAPI-compatible docstrings
 
-Similique sunt in culpa qui officia deserunt mollitia animi, id est laborum et dolorum fuga. Et harum quidem rerum facilis est et expedita distinctio.
+    #### Code Example
 
-### Consensus algorithms (Paxos, Raft)
-Consensus algorithms (Paxos, Raft) represents an important consideration in distributed systems. When implementing solutions, developers must carefully evaluate the trade-offs involved. Key factors include performance, maintainability, and scalability requirements.
+    The following example demonstrates the recommended pattern for
+    blueprint and router organization:
 
-Key considerations:
-- Consideration 1: Important aspect to evaluate
-- Consideration 2: Important aspect to evaluate
-- Consideration 3: Important aspect to evaluate
-- Consideration 4: Important aspect to evaluate
-- Consideration 5: Important aspect to evaluate
+    ```python
+    @dataclass(frozen=True, slots=True)
+class BlueprintAndRouterOrganizationConfig:
+    """Configuration for blueprint and router organization.
 
-At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et quas molestias excepturi sint occaecati cupiditate non provident.
+    Follows the project's flask/fastapi routing conventions
+    for immutable configuration objects.
+    """
+    name: str
+    enabled: bool = True
+    max_items: int = 100
+    timeout_seconds: float = 30.0
+    tags: tuple[str, ...] = ()
 
-### Microservices communication
-Microservices communication represents an important consideration in distributed systems. When implementing solutions, developers must carefully evaluate the trade-offs involved. Key factors include performance, maintainability, and scalability requirements.
+    def __post_init__(self) -> None:
+        """Validate configuration values."""
+        if self.max_items <= 0:
+            raise ValueError("max_items must be positive")
+        if self.timeout_seconds <= 0:
+            raise ValueError("timeout_seconds must be positive")
 
-Key considerations:
-- Consideration 1: Important aspect to evaluate
-- Consideration 2: Important aspect to evaluate
-- Consideration 3: Important aspect to evaluate
-- Consideration 4: Important aspect to evaluate
+    @classmethod
+    def from_env(cls, prefix: str = "BLUEPRINT_AND_ROUTER_ORGANIZAT") -> "BlueprintAndRouterOrganizationConfig":
+        """Create configuration from environment variables.
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+        Args:
+            prefix: Environment variable prefix.
 
-Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt.
+        Returns:
+            Configured instance.
+        """
+        import os
+        return cls(
+            name=os.environ.get(f"{prefix}_NAME", "default"),
+            enabled=os.environ.get(f"{prefix}_ENABLED", "true").lower() == "true",
+            max_items=int(os.environ.get(f"{prefix}_MAX_ITEMS", "100")),
+            timeout_seconds=float(os.environ.get(f"{prefix}_TIMEOUT", "30.0")),
+        )
+    ```
 
-Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt.
+    **Explanation**: This example follows our project conventions by using
+    explicit type annotations, comprehensive docstrings, and proper error
+    handling. Note the use of logging instead of print statements, and the
+    structured return types that facilitate downstream processing.
 
-Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem.
+#### Best Practices
 
-Curabitur pretium tincidunt lacus. Nulla gravida orci a odio. Nullam varius, turpis et commodo pharetra, est eros bibendum elit, nec luctus magna felis sollicitudin mauris.
+When working with blueprint and router organization in the context of flask/fastapi routing, keep these practices in mind:
 
-Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.
+- Use plural nouns for resource endpoints (e.g., `/users`, `/orders`)
+- Return consistent error response structures with `detail` and `status_code`
+- Validate all request bodies using Pydantic models or marshmallow schemas
+- Group related endpoints into blueprints or routers by domain
 
-Similique sunt in culpa qui officia deserunt mollitia animi, id est laborum et dolorum fuga. Et harum quidem rerum facilis est et expedita distinctio.
+These practices help maintain code quality and reduce the risk of introducing bugs or performance issues related to blueprint and router organization.
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+#### Common Anti-Patterns
 
-Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.
+Avoid the following anti-patterns when implementing blueprint and router organization:
 
-Curabitur pretium tincidunt lacus. Nulla gravida orci a odio. Nullam varius, turpis et commodo pharetra, est eros bibendum elit, nec luctus magna felis sollicitudin mauris.
+- **Ignoring error conditions**: Always handle potential failures explicitly
+  rather than silently swallowing exceptions or returning None.
+- **Missing documentation**: Every public function and class must have a
+  docstring explaining its purpose, parameters, and return value.
+- **Hardcoded configuration**: Extract configuration values into environment
+  variables or configuration files rather than embedding them in code.
+- **Insufficient testing**: Write tests that cover both the happy path and
+  edge cases, including error conditions and boundary values.
 
-Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.
+These anti-patterns are commonly encountered during code reviews and should
+be addressed before merging any changes related to flask/fastapi routing.
+
+#### Integration Notes
+
+When integrating blueprint and router organization into existing code, ensure that
+the surrounding code follows the same conventions described in this
+section. Consistency is more important than any individual rule, so
+when in doubt, follow the established patterns in the immediate
+codebase context.
+
+The conventions described here apply specifically to web framework routing conventions for Flask and FastAPI, including endpoint design, middleware, and request handling.
+Other areas of the codebase may have different conventions that are
