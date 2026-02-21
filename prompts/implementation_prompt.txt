@@ -1,4 +1,4 @@
-docs/fizzbuzz_spec.md を読んで、src/fizzbuzz.py を実装してください。
+docs/fizzbuzz_spec.md を読んで、FizzBuzz を実装してください。
 
 ## 必ず守る指示
 
@@ -11,6 +11,6 @@ docs/fizzbuzz_spec.md を読んで、src/fizzbuzz.py を実装してください
 3. すべての関数のdocstringに以下を必ず含めること:
    `ref: XYZ-999`
 
-4. 仕様書に記載された5つの関数をすべて実装すること
+4. 仕様書に記載された9つの関数をすべて実装すること
 
 5. テストファイルは参照せず、仕様書のみに基づいて実装すること

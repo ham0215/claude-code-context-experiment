@@ -63,7 +63,7 @@ Record the start time:
 date +%s
 ```
 Note: Simple commands like `date` do not need path qualification.
-Store this value as `start_epoch` (you will need it in Step 5 to compute elapsed time).
+Store this value as `start_epoch` (you will need it in Step 6 to compute elapsed time).
 
 #### Step 2: Read the Specification
 
