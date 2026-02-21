@@ -30,11 +30,60 @@ TeamCreate/TaskCreate/SendMessage を使用して、タスクを事前割り当�
 
 ## 使い方
 
-ユーザーから以下のパラメータを確認してください：
+ユーザーから以下のパラメータを AskUserQuestion で確認してください：
 
 1. **コンテキストレベル**: `30%`, `50%`, `80%` のいずれか
-2. **試行範囲**: 開始番号と終了番号（例: 1-5）
+2. **試行範囲**: 下記ルールに従って選択肢を動的生成
 3. **ワーカー数**: 同時起動するワーカー数（推奨: 試行数と同数。**1トライアル1ワーカーが必須**）
+
+### 試行範囲の選択肢生成ルール
+
+AskUserQuestion で試行範囲を提示する前に、`results/` 配下の既存結果ファイルを確認し、
+選択したコンテキストレベルに対応する最大試行番号を特定します。
+
+**既存データの確認方法:**
+
+```bash
+ls results/trial_{level}_*.json 2>/dev/null | sort
+```
+
+**選択肢の生成ロジック:**
+
+- **既存データなし**: `1-3`, `1-5`, `1-10` を提示
+- **既存データあり**: 既存の最大番号を `N` として、`1-3`, `1-5`, `1-10` に加え、
+  被らない連番の追加選択肢 `{N+1}-{N+3}` を先頭に提示（Recommended）
+
+**例: 30% レベルで `results/trial_30%_001.json` ～ `trial_30%_005.json` が存在する場合**
+
+```
+AskUserQuestion:
+  question: "試行範囲を選択してください（既存データ: trial 1-5）"
+  header: "Trials"
+  options:
+    - label: "6-8 (Recommended)"
+      description: "既存データ（1-5）に続く3試行を追加実行"
+    - label: "1-3"
+      description: "3 trials（既存データと重複する場合は上書き）"
+    - label: "1-5"
+      description: "5 trials（既存データと重複する場合は上書き）"
+    - label: "1-10"
+      description: "10 trials（既存データと重複する場合は上書き）"
+```
+
+**例: 既存データなしの場合**
+
+```
+AskUserQuestion:
+  question: "試行範囲を選択してください"
+  header: "Trials"
+  options:
+    - label: "1-3"
+      description: "3 trials (trial 1 through 3)"
+    - label: "1-5"
+      description: "5 trials (trial 1 through 5)"
+    - label: "1-10"
+      description: "10 trials (trial 1 through 10)"
+```
 
 ## 実行手順
 
