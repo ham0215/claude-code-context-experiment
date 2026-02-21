@@ -7,13 +7,12 @@ allowed-tools: Bash
 
 実験完了後のトライアル検証とデータ集計を実行します。
 
-## Step 0: テスト/検証ファイルの復元
+## 前提条件
 
-実験中に隠蔽されたテスト・検証ファイルを git から復元します。
+このコマンドを実行する前に、以下が完了していることを確認してください：
 
-```bash
-git checkout HEAD -- tests/test_fizzbuzz.py tests/test_validate_local.py tests/test_analyze_results.py tests/conftest.py scripts/verify_trials.py scripts/validate_local.py scripts/analyze_results.py
-```
+1. `git checkout HEAD -- CLAUDE.md tests/ scripts/verify_trials.py scripts/validate_local.py scripts/analyze_results.py` で全ファイルが復元済み
+2. Claude Code が再起動済み（CLAUDE.md の変更を反映するため）
 
 ## Step 1: テスト＆バリデーション
 

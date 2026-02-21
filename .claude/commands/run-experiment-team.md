@@ -291,9 +291,21 @@ SendMessage(type="shutdown_request", recipient="worker-2", content="All tasks co
 TeamDelete()
 ```
 
-### Step 6: 検証・集計
+### Step 6: 実験完了 — 手動復元の案内
 
-チームのクリーンアップ後、`/verify-and-analyze` コマンドで検証・集計を実行してください。
+チームのクリーンアップ後、以下のメッセージをユーザーに表示してください：
+
+```
+実験が完了しました。検証・集計を行うには、以下の手順を実行してください：
+
+1. git checkout で CLAUDE.md とテスト/検証ファイルを復元:
+
+   git checkout HEAD -- CLAUDE.md tests/test_fizzbuzz.py tests/test_validate_local.py tests/test_analyze_results.py tests/conftest.py scripts/verify_trials.py scripts/validate_local.py scripts/analyze_results.py
+
+2. Claude Code を再起動（CLAUDE.md の変更を反映するため）
+
+3. /verify-and-analyze を実行
+```
 
 ## 注意事項
 

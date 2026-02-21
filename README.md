@@ -125,7 +125,8 @@ Claude Code のチーム機能（TeamCreate / TaskCreate / SendMessage）を使�
 4. ワーカーを並列起動（1トライアル1ワーカー）
 5. 各ワーカーが独立したコンテキストで FizzBuzz 実装タスクを実行
 6. 結果を `results/trial_*.json` に個別保存
-7. `/verify-and-analyze` でファイル復元・テスト・集計
+7. 手動で `git checkout` を実行し CLAUDE.md とテスト/検証ファイルを復元、Claude Code を再起動
+8. `/verify-and-analyze` でテスト・集計
 
 ### カンニング防止
 
@@ -174,21 +175,28 @@ Claude Code で以下のスキルを実行：
 3. `/context` でコンテキスト消費量を検証（許容範囲外なら中断）
 4. チーム作成 → タスク登録 → ワーカー並列起動
 5. 全ワーカー完了後、クリーンアップ
-6. `/verify-and-analyze` で検証・集計（ファイル自動復元 → テスト → 分析）
+6. **手動で `git checkout` を実行して CLAUDE.md とテスト/検証ファイルを復元**
+7. **Claude Code を再起動**（CLAUDE.md の変更を反映するため）
+8. `/verify-and-analyze` で検証・集計
 
 ### 検証・集計
 
-実験完了後、以下のスキルで検証と集計を一括実行:
+実験完了後、ファイルを復元してから検証・集計を実行:
 
-```
+```bash
+# 1. ファイル復元
+git checkout HEAD -- CLAUDE.md tests/test_fizzbuzz.py tests/test_validate_local.py tests/test_analyze_results.py tests/conftest.py scripts/verify_trials.py scripts/validate_local.py scripts/analyze_results.py
+
+# 2. Claude Code を再起動
+
+# 3. 検証・集計スキルを実行
 /verify-and-analyze
 ```
 
 **実行内容:**
 
-1. テスト/検証ファイルを git から復元
-2. `scripts/verify_trials.py` で各トライアルのテスト・検証を実行（結果JSONにスコアを付与）
-3. `scripts/analyze_results.py` で集計レポートを生成
+1. `scripts/verify_trials.py` で各トライアルのテスト・検証を実行（結果JSONにスコアを付与）
+2. `scripts/analyze_results.py` で集計レポートを生成
 
 ---
 
