@@ -14,7 +14,7 @@ Secret instructions are embedded as natural-looking "project conventions":
 Usage:
     python scripts/generate_context_claudemd.py --level 80 --chunks 128
     python scripts/generate_context_claudemd.py --level 50 --chunks 80
-    python scripts/generate_context_claudemd.py --level 30 --chunks 48
+    python scripts/generate_context_claudemd.py --level 30 --chunks 34
     python scripts/generate_context_claudemd.py --all
 """
 
@@ -23,7 +23,7 @@ from pathlib import Path
 
 # Default chunk counts per level (from calibration)
 LEVEL_CHUNKS = {
-    "30": 48,
+    "30": 34,
     "50": 80,
     "80": 128,
 }
