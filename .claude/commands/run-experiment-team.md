@@ -281,24 +281,9 @@ SendMessage(type="shutdown_request", recipient="worker-2", content="All tasks co
 TeamDelete()
 ```
 
-### Step 5.5: 全ワーカー検証（テスト＆バリデーション）
+### Step 6: 検証・集計
 
-全ワーカーの実装完了後、テスト実行とバリデーションをチームリーダー側でまとめて実施します。
-各トライアルの結果 JSON にテスト・検証フィールドを追加します。
-
-以下のスクリプトを実行してください：
-
-```bash
-python3 scripts/verify_trials.py
-```
-
-**出力を確認**して、全トライアルのテスト結果と検証スコアが正常であることを確認してください。
-
-### Step 6: 結果集計
-
-```bash
-python scripts/analyze_results.py
-```
+チームのクリーンアップ後、`/verify-and-analyze` コマンドで検証・集計を実行してください。
 
 ## 注意事項
 
