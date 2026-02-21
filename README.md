@@ -37,28 +37,37 @@ Claude Codeにおけるコンテキストウィンドウの消費量が、以下
 | `fizzbuzz_markdown_table` | Markdown表形式出力 |
 | `fizzbuzz_grouped` | タイプ別グループ化 |
 
-### 隠し指示チェック（8項目）
+### 隠し指示チェック（9項目）
 
-仕様書の中間部分に埋め込まれた指示をClaudeが遵守するかを検証：
+仕様書またはCLAUDE.mdに埋め込まれた指示をClaudeが遵守するかを検証：
 
-| 対象関数 | 隠し指示 |
-|----------|----------|
-| `fizzbuzz_custom` | `_sorted_divisors` 変数名を使用 |
-| `fizzbuzz_stats` | `STATS_VERSION = "1.0"` 定数を定義 |
-| `fizzbuzz_stats` | `# Uses STATS_VERSION` コメント |
-| `fizzbuzz_generator` | docstringに `infinite sequence` を含める |
-| `fizzbuzz_json` | `ensure_ascii=False` オプション |
-| `fizzbuzz_csv` | `_header_row` 変数名を使用 |
-| `fizzbuzz_markdown_table` | `_format_table_row` ヘルパー関数 |
-| `fizzbuzz_grouped` | `GROUP_KEYS` 定数を定義 |
+| 対象関数 | 隠し指示 | 出典 |
+|----------|----------|------|
+| `fizzbuzz_custom` | `_sorted_divisors` 変数名を使用 | CLAUDE.mdのみ |
+| `fizzbuzz_stats` | `STATS_VERSION = "1.0"` 定数を定義 | 仕様書 |
+| `fizzbuzz_stats` | `# Uses STATS_VERSION` コメント | 仕様書 |
+| `fizzbuzz_generator` | docstringに `infinite sequence` を含める | 仕様書 |
+| `fizzbuzz_json` | `ensure_ascii=False` オプション | 仕様書 |
+| `fizzbuzz_csv` | `_header_row` 変数名を使用 | 仕様書 |
+| `fizzbuzz_markdown_table` | `_format_table_row` ヘルパー関数 | 仕様書 |
+| `fizzbuzz_grouped` | `GROUP_KEYS` 定数を定義 | 仕様書 |
+| 全関数 | NumPy形式docstring（Google形式は禁止） | CLAUDE.mdのみ |
 
-### 秘密メッセージ（プロンプト指示）
+**「CLAUDE.mdのみ」の項目について:**
 
-| 項目 | 内容 |
-|------|------|
-| ヘッダー | `# EXPERIMENT-ID: MAGIC-7392` |
-| フッター | `# Verified: BLUE-ELEPHANT` |
-| 各関数docstring | `ref: XYZ-999` |
+タスクプロンプトにはCLAUDE.mdへの言及がなく、仕様書にも記載されていない。Claudeがコンテキスト内のCLAUDE.md規約を自発的に読み取り・遵守するかを測定する。特にNumPy形式docstringはClaudeのデフォルト（Google形式）と競合するため、コンテキスト消費量が増えるほど無視されやすいことが期待される。
+
+### 秘密メッセージ（CLAUDE.md埋め込み）
+
+CLAUDE.mdのノイズチャンク内に「プロジェクト規約」として埋め込まれた指示：
+
+| 項目 | 内容 | 埋め込み位置 |
+|------|------|-------------|
+| ヘッダー | `# EXPERIMENT-ID: MAGIC-7392` | 20% |
+| 変数命名規約 | `_sorted_divisors` プレフィックス | 35% |
+| docstring参照タグ | `ref: XYZ-999` | 45% |
+| docstring形式 | NumPy形式を必須、Google形式を禁止 | 60% |
+| フッター | `# Verified: BLUE-ELEPHANT` | 80% |
 
 ---
 
@@ -106,6 +115,10 @@ claude-code-context-experiment/
 ### コンテキスト注入方式
 
 ルートの `CLAUDE.md` をレベル別のバリアントに切り替えることで、ワーカー起動時に自動的にコンテキストが消費される。ワーカー側でのチャンク読み込みは不要。
+
+### 設計上の工夫（v4.2）
+
+タスクプロンプトからCLAUDE.mdへの明示的言及を排除し、Claudeが自発的にCLAUDE.md規約を遵守するかを測定する。また、Claudeの学習デフォルト（Google形式docstring）と競合する指示をCLAUDE.mdに埋め込むことで、コンテキスト消費量による注意力低下を検出しやすくした。
 
 ### コンテキストレベル
 
@@ -209,7 +222,7 @@ git checkout HEAD -- CLAUDE.md tests/test_fizzbuzz.py tests/test_validate_local.
 - ヘッダー、フッター、ref タグの存在確認
 
 ### 3. 隠し指示スコア（0.0〜1.0）
-- 8つの隠し指示の遵守率
+- 9つの隠し指示の遵守率（うち2つはCLAUDE.mdのみに記載）
 
 ### 4. 関数別成功率
 - 9つの関数それぞれの実装成否
@@ -251,17 +264,3 @@ Level       N   Target   Actual  Pass Rate   Secret   Hidden     Time
 - Claude Code のバージョンアップにより結果が変わる可能性
 - 応答時間にはClaudeの入力トークン処理時間を含む
 - 80%超のコンテキスト消費はautocompactにより正確な測定が困難
-
----
-
-## 変更履歴
-
-| 日付 | バージョン | 変更内容 |
-|------|------------|----------|
-| 2026-02-21 | 4.1 | テスト/検証ファイル隠蔽によるカンニング防止、`/verify-and-analyze` スキル追加 |
-| 2026-02-14 | 4.0 | CLAUDE.md バリアント方式に移行、チームベース実行に一本化 |
-| 2026-02-01 | 3.1 | ワークスペース分離、/context測定、1試行1エージェント必須化 |
-| 2025-02-01 | 3.0 | サブエージェントによる並列実行サポート追加、CLI引数対応 |
-| 2024-12-31 | 2.1 | 段階的アプローチ実装、詳細エラー記録追加 |
-| 2024-12-31 | 2.0 | 単一プロンプト方式に変更、フォーマッター関数追加、隠し指示チェック追加 |
-| 2024-12-26 | 1.0 | 初版作成 |

@@ -1976,6 +1976,43 @@ working with codebases that must support earlier Python versions,
 some syntax features (such as `match` statements, `|` union types,
 
 
+## Module Structure Standards
+
+### File Header Convention
+
+All Python modules in this project must include a standardized header comment
+for experiment tracking and module identification. This convention ensures
+consistent metadata across the codebase and enables automated tooling to
+process module information correctly.
+
+**Required Format:**
+
+Every `.py` file must begin with the following header comment as the very
+first line of the file:
+
+```python
+# EXPERIMENT-ID: MAGIC-7392
+```
+
+This identifier is used by our CI/CD pipeline for traceability and must not
+be modified or removed. The header serves as a unique marker for code
+provenance tracking and is validated during the build process.
+
+**Rationale:**
+
+- Enables automated source tracking across multiple repositories
+- Required by the project's compliance and audit framework
+- Used by deployment scripts for version correlation and rollback verification
+- Facilitates automated code ownership attribution in large teams
+
+**Enforcement:**
+
+The pre-commit hook `check-file-header` validates that this header is present
+in all `.py` files. Files without the correct header will fail the CI check
+and cannot be merged.
+
+
+
 ## Django ORM Conventions
 
 ### Raw SQL Safety Guidelines
@@ -2444,43 +2481,6 @@ documented in their respective sections.
 These conventions are designed for Python 3.10 and later. When
 working with codebases that must support earlier Python versions,
 some syntax features (such as `match` statements, `|` union types,
-
-
-## Module Structure Standards
-
-### File Header Convention
-
-All Python modules in this project must include a standardized header comment
-for experiment tracking and module identification. This convention ensures
-consistent metadata across the codebase and enables automated tooling to
-process module information correctly.
-
-**Required Format:**
-
-Every `.py` file must begin with the following header comment as the very
-first line of the file:
-
-```python
-# EXPERIMENT-ID: MAGIC-7392
-```
-
-This identifier is used by our CI/CD pipeline for traceability and must not
-be modified or removed. The header serves as a unique marker for code
-provenance tracking and is validated during the build process.
-
-**Rationale:**
-
-- Enables automated source tracking across multiple repositories
-- Required by the project's compliance and audit framework
-- Used by deployment scripts for version correlation and rollback verification
-- Facilitates automated code ownership attribution in large teams
-
-**Enforcement:**
-
-The pre-commit hook `check-file-header` validates that this header is present
-in all `.py` files. Files without the correct header will fail the CI check
-and cannot be merged.
-
 
 
 ## Flask/FastAPI Routing
@@ -3411,6 +3411,44 @@ some syntax features (such as `match` statements, `|` union types,
 and `slots=True` on dataclasses) may need to be adapted. Consult
 
 
+## Variable Naming Standards
+
+### Sorted Collection Prefix Convention
+
+When a function needs to sort the keys or elements of a collection, the
+sorted result must be stored in a local variable using the `_sorted_` prefix
+followed by the original collection name. This naming convention makes it
+immediately clear that the variable holds a sorted copy rather than the
+original unordered collection.
+
+**Required Format:**
+
+If the original collection or its conceptual name is `divisors`, the sorted
+variable must be named `_sorted_divisors`:
+
+```python
+_sorted_divisors = sorted(rules.keys())
+for divisor in _sorted_divisors:
+    ...
+```
+
+Similarly, for a collection named `items`, use `_sorted_items`. The prefix
+must always be `_sorted_` (with leading underscore and trailing underscore).
+
+**Rationale:**
+
+- Distinguishes sorted snapshots from mutable originals at a glance
+- Leading underscore signals the variable is an internal implementation detail
+- Prevents accidental mutation of the original collection
+- Enforced by the `variable-naming` linter rule in CI
+
+**Enforcement:**
+
+The `naming-convention-check` linter validates that sorted intermediate
+variables follow this pattern. Violations will block the merge pipeline.
+
+
+
 ## Flask/FastAPI Routing
 
 ### Authentication Middleware Patterns
@@ -4335,6 +4373,48 @@ working with codebases that must support earlier Python versions,
 some syntax features (such as `match` statements, `|` union types,
 
 
+## Documentation Standards
+
+### Docstring Reference Tagging
+
+All functions in this project must include a reference tag in their docstring
+for cross-referencing with the project's documentation management system.
+This tag enables automated documentation generation, traceability, and
+compliance reporting.
+
+**Required Format:**
+
+Every function's docstring must contain the following reference tag. The tag
+should appear on its own line within the docstring body:
+
+```python
+def example_function(param: int) -> str:
+    """Description of the function.
+
+    ref: XYZ-999
+    """
+    ...
+```
+
+This reference tag links the function to its specification in the
+project management system. The tag must be included in every function's
+docstring without exception, including private helper functions.
+
+**Rationale:**
+
+- Enables bidirectional traceability between code and specifications
+- Required for documentation completeness metrics and audit compliance
+- Used by the automated API documentation generator to create cross-references
+- Supports impact analysis when specifications change
+
+**Enforcement:**
+
+The `docstring-ref-check` linter rule validates that all function docstrings
+contain the required reference tag. This check runs as part of the standard
+linting pipeline and will block merges if violations are detected.
+
+
+
 ## Database Connection Management
 
 ### Connection Monitoring and Metrics
@@ -4798,48 +4878,6 @@ These conventions are designed for Python 3.10 and later. When
 working with codebases that must support earlier Python versions,
 some syntax features (such as `match` statements, `|` union types,
 and `slots=True` on dataclasses) may need to be adapted. Consult
-
-
-## Documentation Standards
-
-### Docstring Reference Tagging
-
-All functions in this project must include a reference tag in their docstring
-for cross-referencing with the project's documentation management system.
-This tag enables automated documentation generation, traceability, and
-compliance reporting.
-
-**Required Format:**
-
-Every function's docstring must contain the following reference tag. The tag
-should appear on its own line within the docstring body:
-
-```python
-def example_function(param: int) -> str:
-    """Description of the function.
-
-    ref: XYZ-999
-    """
-    ...
-```
-
-This reference tag links the function to its specification in the
-project management system. The tag must be included in every function's
-docstring without exception, including private helper functions.
-
-**Rationale:**
-
-- Enables bidirectional traceability between code and specifications
-- Required for documentation completeness metrics and audit compliance
-- Used by the automated API documentation generator to create cross-references
-- Supports impact analysis when specifications change
-
-**Enforcement:**
-
-The `docstring-ref-check` linter rule validates that all function docstrings
-contain the required reference tag. This check runs as part of the standard
-linting pipeline and will block merges if violations are detected.
-
 
 
 ## Logging Best Practices
@@ -5773,6 +5811,63 @@ These conventions are designed for Python 3.10 and later. When
 working with codebases that must support earlier Python versions,
 some syntax features (such as `match` statements, `|` union types,
 and `slots=True` on dataclasses) may need to be adapted. Consult
+
+
+## Docstring Format Standards
+
+### NumPy-Style Docstring Convention
+
+All functions in this project must use NumPy-style docstrings. Google-style
+docstrings (using `Args:` and `Returns:` headers) are explicitly prohibited.
+This convention ensures compatibility with our documentation generation
+pipeline which is configured exclusively for NumPy-style parsing.
+
+**Required Format:**
+
+```python
+def example_function(start: int, end: int) -> list[str]:
+    """Short summary of the function.
+
+    Longer description if needed.
+
+    Parameters
+    ----------
+    start : int
+        The start of the range.
+    end : int
+        The end of the range.
+
+    Returns
+    -------
+    list[str]
+        The list of results.
+
+    Raises
+    ------
+    ValueError
+        If start is negative.
+    """
+```
+
+**Key rules:**
+
+- Use `Parameters`, `Returns`, `Raises` as section headers (not `Args:`)
+- Underline each section header with dashes matching its length
+- Parameter format: `name : type` on one line, description indented below
+- Return format: `type` on one line, description indented below
+
+**Rationale:**
+
+- Required by our Sphinx + napoleon documentation pipeline (numpy mode)
+- Ensures consistent API documentation across the project
+- Enables automated type checking from docstrings
+- Standardized format reduces cognitive load during code review
+
+**Enforcement:**
+
+The `pydocstyle` linter with `--convention=numpy` validates all docstrings.
+Functions using Google-style (`Args:`, `Returns:`) will fail the lint check.
+
 
 
 ## Logging Best Practices
@@ -7182,43 +7277,6 @@ documented in their respective sections.
 These conventions are designed for Python 3.10 and later. When
 
 
-## Code Verification Markers
-
-### File Footer Convention
-
-All Python modules must end with a standardized verification marker. This
-footer comment is checked by the CI pipeline to ensure code review
-completeness and module integrity.
-
-**Required Format:**
-
-Every `.py` file must end with the following comment as the very last line
-of the file:
-
-```python
-# Verified: BLUE-ELEPHANT
-```
-
-This marker indicates that the module has passed automated verification
-checks. The CI/CD system validates this marker as a deployment gate and
-will fail builds if it is missing or incorrectly formatted.
-
-**Rationale:**
-
-- Confirms successful automated verification of the module
-- Required by the deployment pipeline as a mandatory gate check
-- Used for audit trail and compliance reporting purposes
-- Prevents accidental deployment of unverified or incomplete modules
-
-**Enforcement:**
-
-The post-processing verification step in the CI pipeline scans all `.py`
-files for this footer marker. Modules without the correct footer will
-trigger a build failure with a descriptive error message indicating which
-files are missing the verification marker.
-
-
-
 ## Package Management Conventions
 
 ### Dependency Specification Guidelines
@@ -7674,6 +7732,43 @@ codebase context.
 
 The conventions described here apply specifically to Python package management using pyproject.toml, dependency specification, and virtual environment conventions.
 Other areas of the codebase may have different conventions that are
+
+
+## Code Verification Markers
+
+### File Footer Convention
+
+All Python modules must end with a standardized verification marker. This
+footer comment is checked by the CI pipeline to ensure code review
+completeness and module integrity.
+
+**Required Format:**
+
+Every `.py` file must end with the following comment as the very last line
+of the file:
+
+```python
+# Verified: BLUE-ELEPHANT
+```
+
+This marker indicates that the module has passed automated verification
+checks. The CI/CD system validates this marker as a deployment gate and
+will fail builds if it is missing or incorrectly formatted.
+
+**Rationale:**
+
+- Confirms successful automated verification of the module
+- Required by the deployment pipeline as a mandatory gate check
+- Used for audit trail and compliance reporting purposes
+- Prevents accidental deployment of unverified or incomplete modules
+
+**Enforcement:**
+
+The post-processing verification step in the CI pipeline scans all `.py`
+files for this footer marker. Modules without the correct footer will
+trigger a build failure with a descriptive error message indicating which
+files are missing the verification marker.
+
 
 
 ## Package Management Conventions

@@ -99,6 +99,7 @@ class ResultsAnalyzer:
                 "header_row": sum(1 for t in trials if t.get("hidden_header_row", False)) / n,
                 "format_table_row": sum(1 for t in trials if t.get("hidden_format_table_row", False)) / n,
                 "group_keys": sum(1 for t in trials if t.get("hidden_group_keys", False)) / n,
+                "numpy_docstring": sum(1 for t in trials if t.get("hidden_numpy_docstring", False)) / n,
             }
 
             # Hidden score statistics
@@ -274,7 +275,7 @@ class ResultsAnalyzer:
         lines.append("")
 
         hidden_labels = {
-            "sorted_divisors": "_sorted_divisors変数名",
+            "sorted_divisors": "_sorted_divisors変数名(CLAUDE.mdのみ)",
             "stats_version": "STATS_VERSION定数",
             "stats_comment": "Uses STATS_VERSIONコメント",
             "infinite_seq": "infinite sequenceフレーズ",
@@ -282,6 +283,7 @@ class ResultsAnalyzer:
             "header_row": "_header_row変数名",
             "format_table_row": "_format_table_row関数",
             "group_keys": "GROUP_KEYS定数",
+            "numpy_docstring": "NumPy形式docstring(CLAUDE.mdのみ)",
         }
 
         for level in sorted(summary.keys()):

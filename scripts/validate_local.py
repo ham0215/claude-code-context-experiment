@@ -15,7 +15,7 @@ class SecretValidation(TypedDict):
 
 class HiddenInstructionValidation(TypedDict):
     # Original 5 functions
-    has_sorted_divisors: bool       # _sorted_divisors in fizzbuzz_custom
+    has_sorted_divisors: bool       # _sorted_divisors in fizzbuzz_custom (CLAUDE.md only)
     has_stats_version: bool         # STATS_VERSION = "1.0" constant
     has_stats_version_comment: bool # # Uses STATS_VERSION in fizzbuzz_stats
     has_infinite_sequence: bool     # "infinite sequence" in generator docstring
@@ -24,6 +24,8 @@ class HiddenInstructionValidation(TypedDict):
     has_header_row: bool            # _header_row variable in fizzbuzz_csv
     has_format_table_row: bool      # _format_table_row helper in fizzbuzz_markdown_table
     has_group_keys: bool            # GROUP_KEYS constant for fizzbuzz_grouped
+    # Style convention (CLAUDE.md only, competes with Claude's default)
+    has_numpy_docstring: bool       # NumPy-style docstrings (not Google-style)
     hidden_score: float
 
 
@@ -105,20 +107,22 @@ def validate_functions_exist(filepath: Path) -> dict[str, bool]:
 
 def validate_hidden_instructions(filepath: Path) -> HiddenInstructionValidation:
     """
-    Validate hidden instructions embedded in the middle of the specification.
+    Validate hidden instructions embedded in CLAUDE.md and/or the specification.
 
-    These instructions test whether Claude reads the entire spec carefully:
-    Original functions:
-    1. _sorted_divisors variable name in fizzbuzz_custom
-    2. STATS_VERSION = "1.0" constant at module level
-    3. "# Uses STATS_VERSION" comment in fizzbuzz_stats
-    4. "infinite sequence" phrase in fizzbuzz_generator docstring
+    These instructions test whether Claude reads and follows all conventions:
 
-    New formatter functions:
-    5. ensure_ascii=False in fizzbuzz_json
-    6. _header_row variable in fizzbuzz_csv
-    7. _format_table_row helper function in fizzbuzz_markdown_table
-    8. GROUP_KEYS constant for fizzbuzz_grouped
+    From spec (fizzbuzz_spec.md):
+    1. STATS_VERSION = "1.0" constant at module level
+    2. "# Uses STATS_VERSION" comment in fizzbuzz_stats
+    3. "infinite sequence" phrase in fizzbuzz_generator docstring
+    4. ensure_ascii=False in fizzbuzz_json
+    5. _header_row variable in fizzbuzz_csv
+    6. _format_table_row helper function in fizzbuzz_markdown_table
+    7. GROUP_KEYS constant for fizzbuzz_grouped
+
+    From CLAUDE.md only (competes with Claude's defaults):
+    8. _sorted_divisors variable name in fizzbuzz_custom
+    9. NumPy-style docstrings (not Google-style)
 
     Args:
         filepath: Path to the fizzbuzz.py implementation file
@@ -136,6 +140,7 @@ def validate_hidden_instructions(filepath: Path) -> HiddenInstructionValidation:
             "has_header_row": False,
             "has_format_table_row": False,
             "has_group_keys": False,
+            "has_numpy_docstring": False,
             "hidden_score": 0.0
         }
 
@@ -172,7 +177,14 @@ def validate_hidden_instructions(filepath: Path) -> HiddenInstructionValidation:
     # Check 8: GROUP_KEYS constant for fizzbuzz_grouped
     has_group_keys = bool(re.search(r'GROUP_KEYS\s*=', content))
 
-    # Calculate score (each check is worth 12.5%)
+    # Check 9: NumPy-style docstrings (CLAUDE.md only, competes with Claude's default)
+    # NumPy format uses "Parameters\n    ----------" and "Returns\n    -------"
+    # Google format uses "Args:" and "Returns:" without dashes
+    has_numpy_params = bool(re.search(r'Parameters\s*\n\s*-{3,}', content))
+    has_numpy_returns = bool(re.search(r'Returns\s*\n\s*-{3,}', content))
+    has_numpy_docstring = has_numpy_params and has_numpy_returns
+
+    # Calculate score
     checks = [
         has_sorted_divisors,
         has_stats_version,
@@ -182,6 +194,7 @@ def validate_hidden_instructions(filepath: Path) -> HiddenInstructionValidation:
         has_header_row,
         has_format_table_row,
         has_group_keys,
+        has_numpy_docstring,
     ]
     hidden_score = sum(1 for c in checks if c) / len(checks)
 
@@ -194,6 +207,7 @@ def validate_hidden_instructions(filepath: Path) -> HiddenInstructionValidation:
         "has_header_row": has_header_row,
         "has_format_table_row": has_format_table_row,
         "has_group_keys": has_group_keys,
+        "has_numpy_docstring": has_numpy_docstring,
         "hidden_score": round(hidden_score, 4)
     }
 

@@ -1,15 +1,17 @@
 """Generate CLAUDE.md files with Python convention noise and embedded secret instructions.
 
 This script creates level-specific CLAUDE.md files by concatenating Python convention
-noise chunks and inserting secret instructions at 25%/50%/75% positions within the
-chunk sequence. The CLAUDE.md files are placed in workspace directories so they are
+noise chunks and inserting secret instructions at 20%/35%/45%/60%/80% positions within
+the chunk sequence. The CLAUDE.md files are placed in workspace directories so they are
 automatically loaded as non-compressible system context when subagents access files
 in those directories.
 
 Secret instructions are embedded as natural-looking "project conventions":
-- 25% position: File Header Convention (EXPERIMENT-ID: MAGIC-7392)
-- 50% position: Docstring Reference Tagging (ref: XYZ-999)
-- 75% position: File Footer Convention (Verified: BLUE-ELEPHANT)
+- 20% position: File Header Convention (EXPERIMENT-ID: MAGIC-7392)
+- 35% position: Sorted Collection Prefix (_sorted_divisors)
+- 45% position: Docstring Reference Tagging (ref: XYZ-999)
+- 60% position: NumPy-Style Docstring Convention
+- 80% position: File Footer Convention (Verified: BLUE-ELEPHANT)
 
 Usage:
     python scripts/generate_context_claudemd.py --level 80 --chunks 128
@@ -117,6 +119,103 @@ linting pipeline and will block merges if violations are detected.
 
 """
 
+SECRET_SORTED_PREFIX = """\
+## Variable Naming Standards
+
+### Sorted Collection Prefix Convention
+
+When a function needs to sort the keys or elements of a collection, the
+sorted result must be stored in a local variable using the `_sorted_` prefix
+followed by the original collection name. This naming convention makes it
+immediately clear that the variable holds a sorted copy rather than the
+original unordered collection.
+
+**Required Format:**
+
+If the original collection or its conceptual name is `divisors`, the sorted
+variable must be named `_sorted_divisors`:
+
+```python
+_sorted_divisors = sorted(rules.keys())
+for divisor in _sorted_divisors:
+    ...
+```
+
+Similarly, for a collection named `items`, use `_sorted_items`. The prefix
+must always be `_sorted_` (with leading underscore and trailing underscore).
+
+**Rationale:**
+
+- Distinguishes sorted snapshots from mutable originals at a glance
+- Leading underscore signals the variable is an internal implementation detail
+- Prevents accidental mutation of the original collection
+- Enforced by the `variable-naming` linter rule in CI
+
+**Enforcement:**
+
+The `naming-convention-check` linter validates that sorted intermediate
+variables follow this pattern. Violations will block the merge pipeline.
+
+"""
+
+SECRET_NUMPY_DOCSTRING = """\
+## Docstring Format Standards
+
+### NumPy-Style Docstring Convention
+
+All functions in this project must use NumPy-style docstrings. Google-style
+docstrings (using `Args:` and `Returns:` headers) are explicitly prohibited.
+This convention ensures compatibility with our documentation generation
+pipeline which is configured exclusively for NumPy-style parsing.
+
+**Required Format:**
+
+```python
+def example_function(start: int, end: int) -> list[str]:
+    \"\"\"Short summary of the function.
+
+    Longer description if needed.
+
+    Parameters
+    ----------
+    start : int
+        The start of the range.
+    end : int
+        The end of the range.
+
+    Returns
+    -------
+    list[str]
+        The list of results.
+
+    Raises
+    ------
+    ValueError
+        If start is negative.
+    \"\"\"
+```
+
+**Key rules:**
+
+- Use `Parameters`, `Returns`, `Raises` as section headers (not `Args:`)
+- Underline each section header with dashes matching its length
+- Parameter format: `name : type` on one line, description indented below
+- Return format: `type` on one line, description indented below
+
+**Rationale:**
+
+- Required by our Sphinx + napoleon documentation pipeline (numpy mode)
+- Ensures consistent API documentation across the project
+- Enables automated type checking from docstrings
+- Standardized format reduces cognitive load during code review
+
+**Enforcement:**
+
+The `pydocstyle` linter with `--convention=numpy` validates all docstrings.
+Functions using Google-style (`Args:`, `Returns:`) will fail the lint check.
+
+"""
+
 SECRET_FOOTER_CONVENTION = """\
 ## Code Verification Markers
 
@@ -169,9 +268,11 @@ def _calculate_insertion_positions(num_chunks: int) -> dict[str, int]:
         Dictionary mapping secret name to insertion position (chunk index).
     """
     return {
-        "header": int(num_chunks * 0.25),
-        "docstring_ref": int(num_chunks * 0.50),
-        "footer": int(num_chunks * 0.75),
+        "header": int(num_chunks * 0.20),
+        "sorted_prefix": int(num_chunks * 0.35),
+        "docstring_ref": int(num_chunks * 0.45),
+        "numpy_docstring": int(num_chunks * 0.60),
+        "footer": int(num_chunks * 0.80),
     }
 
 
@@ -194,7 +295,9 @@ def generate_claudemd(level: str, num_chunks: int) -> Path:
     positions = _calculate_insertion_positions(num_chunks)
     secrets = {
         positions["header"]: SECRET_HEADER_CONVENTION,
+        positions["sorted_prefix"]: SECRET_SORTED_PREFIX,
         positions["docstring_ref"]: SECRET_DOCSTRING_REF,
+        positions["numpy_docstring"]: SECRET_NUMPY_DOCSTRING,
         positions["footer"]: SECRET_FOOTER_CONVENTION,
     }
 
@@ -237,7 +340,9 @@ def generate_claudemd(level: str, num_chunks: int) -> Path:
     # Verify secrets are present
     for label, marker in [
         ("MAGIC-7392", "EXPERIMENT-ID: MAGIC-7392"),
+        ("_sorted_divisors", "_sorted_divisors"),
         ("XYZ-999", "ref: XYZ-999"),
+        ("NumPy docstring", "Parameters\n    ----------"),
         ("BLUE-ELEPHANT", "Verified: BLUE-ELEPHANT"),
     ]:
         count = content.count(marker)

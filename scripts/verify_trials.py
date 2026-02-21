@@ -88,6 +88,7 @@ def verify_all_trials():
                 "hidden_header_row": hidden["has_header_row"],
                 "hidden_format_table_row": hidden["has_format_table_row"],
                 "hidden_group_keys": hidden["has_group_keys"],
+                "hidden_numpy_docstring": hidden["has_numpy_docstring"],
                 "hidden_score": hidden["hidden_score"],
                 "func_results": funcs,
             }
