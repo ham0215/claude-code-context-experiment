@@ -53,6 +53,16 @@ head -20 CLAUDE.md
 cp claude_md_variants/CLAUDE.md.{level}pct CLAUDE.md
 ```
 
+### Step 0.25: テスト/検証ファイルの隠蔽
+
+ワーカーがテストファイルや検証スクリプトを読み取ってカンニングすることを防止するため、これらのファイルをワーキングツリーから削除します。
+
+```bash
+bash scripts/hide_test_files.sh
+```
+
+**注意**: このステップで削除されたファイルは、検証・集計時（`/verify-and-analyze`）に自動復元されます。
+
 ### Step 0.5: /context でコンテキスト消費量を確認
 
 CLAUDE.md の切り替え後、`/context` コマンドを実行して現在のコンテキスト消費量を確認・記録します。
