@@ -90,11 +90,6 @@ Example: `workspaces/trial_30%_005/src/fizzbuzz.py`
 
 **MUST NOT** write to `src/fizzbuzz.py` directly.
 
-**Important requirements from the spec:**
-- Include the secret header: `# EXPERIMENT-ID: MAGIC-7392`
-- Include the secret footer: `# Verified: BLUE-ELEPHANT`
-- Include `ref: XYZ-999` in each function's docstring
-- Follow all hidden instructions embedded in the specification
 
 #### Step 5: Record End Time & Save Results
 
